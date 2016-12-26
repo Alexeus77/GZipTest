@@ -2,7 +2,7 @@
 
 namespace GZipTest.Streaming
 {
-    public static class StreamExt
+    static class StreamExt
     {
         
         public static int ReadFrom(this MemoryStream memBytes, Stream stream)
