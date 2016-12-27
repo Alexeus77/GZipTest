@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GZipTest</RootNamespace>
-    <AssemblyName>GZipTest</AssemblyName>
+    <AssemblyName>GZipTest.Library</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -54,6 +54,7 @@
     <Compile Include="Compression\CompressProcessing.cs" />
     <Compile Include="Buffering\ChunkBufferedStream.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Runner.cs" />
     <Compile Include="Streaming\StreamExt.cs" />
     <Compile Include="Tasks\ITask.cs" />
     <Compile Include="Tasks\ITasker.cs" />

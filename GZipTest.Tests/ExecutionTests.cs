@@ -14,30 +14,37 @@ namespace GZipTest.Tests
         string[] paramsWithoutMode = new string[] { "" };
         string[] paramsCompressModeWithoutFile = new string[] { "cOmpress" };
         string[] paramsDeCompressModeWithoutFile = new string[] { "dEcompress" };
-        string[] paramsDeCompressModeWithoutTargetFile = new string[] { "dEcompress source" };
-        string[] paramsDeCompressModeSourceFileNotFound = new string[] { "dEcompress source target" };
+        string[] paramsDeCompressModeWithoutTargetFile = new string[] { "dEcompress", "source" };
+        string[] paramsDeCompressModeSourceFileNotFound = new string[] { "dEcompress", "source", "target" };
+
+        static GZipTest.Runner exec;
+
+        [ClassInitializeAttribute]
+        public static void ClassInit()
+        {
+            exec = new Runner();
+        }
 
         [TestMethod()]
-        [ExpectedException(typeof(FileNotFoundException))]
+        [ExpectedException(typeof(ArgumentException))]
         public void Expect_ArgumentException_ModeNotSpecifiedTest()
         {
-            Runner exec = new Runner();
             exec.Main(paramsWithoutMode);
         }
 
         [TestMethod()]
-        [ExpectedException(typeof(FileNotFoundException))]
+        [ExpectedException(typeof(ArgumentException))]
         public void Expect_ArgumentException_FileNotSpecifiedTest()
         {
-            Runner exec = new Runner();
+            
             exec.Main(paramsCompressModeWithoutFile);
         }
 
         [TestMethod()]
-        [ExpectedException(typeof(FileNotFoundException))]
+        [ExpectedException(typeof(ArgumentException))]
         public void Expect_ArgumentException_TargetFileNotSpecifiedTest()
         {
-            Runner exec = new Runner();
+            
             exec.Main(paramsDeCompressModeWithoutTargetFile);
         }
 
@@ -45,7 +52,7 @@ namespace GZipTest.Tests
         [ExpectedException(typeof(FileNotFoundException))]
         public void Expect_ArgumentException_SourceFileNotFound()
         {
-            Runner exec = new Runner();
+            
             exec.Main(paramsDeCompressModeSourceFileNotFound);
         }
 
