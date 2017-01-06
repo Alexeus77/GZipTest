@@ -7,20 +7,16 @@ namespace GZipTest.Tasks
     {
         private class Task<T1, T2> : ITask
         {
-            Func<T1, T2, bool> _action;
+            Action<T1, T2> _action;
             Func<bool> _previousFinished;
             T1 _param1;
             T2 _param2;
             bool _finished;
-
-
+            
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
             public Exception Exception { get; private set; }
-
             public Action SignalError { get; set; }
-            private Func<bool> SuspendCondition { get; set; }
             private Action ContinueWith { get; set; }
- 
 
             public bool Finished() { return _finished;  }
 
@@ -37,13 +33,12 @@ namespace GZipTest.Tasks
                 }
             }
 
-            public Task(Func<T1, T2, bool> action, T1 param1, T2 param2,
-                Func<bool> suspendCondition, Action continueWith = null)
+            public Task(Action<T1, T2> action, T1 param1, T2 param2,
+                Action continueWith = null)
             {
                 _action = action;
                 _param1 = param1;
                 _param2 = param2;
-                SuspendCondition = suspendCondition;
                 ContinueWith = continueWith;
             }
 
@@ -64,19 +59,18 @@ namespace GZipTest.Tasks
             {
                 try
                 {
-                    bool finished = false;
-                    while (!finished || PreviousFinished != null && !PreviousFinished())
+                    //iterate action while previous action in chain is not completed
+                    do
                     {
-                        finished = _action(_param1, _param2) && (PreviousFinished == null || PreviousFinished());
-                        if (SuspendCondition != null && SuspendCondition())
-                            Thread.Sleep(100);
-                    }
+                        _action(_param1, _param2);
+                    } while (PreviousFinished != null && !PreviousFinished());
 
+                    //invoke additional action if specified
                     ContinueWith?.Invoke();
                 }
                 catch (Exception exception)
                 {
-                    exception.Source = _action.Method.Name + ": " + exception.Source;
+                    exception.Source = $"{_action.Method.Name}: {exception.Source}. Thread: {Thread.CurrentThread.ManagedThreadId}";
                     this.Exception = exception;
                 }
                 finally
@@ -84,10 +78,11 @@ namespace GZipTest.Tasks
                     _finished = true;
 
                     if (Exception != null)
+                        //signal error to for other threads in chain
                         try { SignalError(); }
                         catch { } //ignore possible error in callback;
 
-                    
+                    //setup completed for awaiting procedure
                     FinishedEvent.Set();
                 }
             }

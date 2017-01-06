@@ -10,26 +10,24 @@ namespace GZipTest.Tasks
     {
         LinkedList<ITask> taskQueue = new LinkedList<ITask>();
         
-        public ITasker Run<T1, T2>(Func<T1, T2, bool> action, T1 param1, T2 param2,
-            Func<bool> suspendCondition)
+        public ITasker Run<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, suspendCondition);
+            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2);
             taskQueue.AddFirst(task);
             task.SignalError = SignalError;
 
             return this as ITasker;
         }
 
-        ITasker ITasker.ThenRun<T1, T2>(Func<T1, T2, bool> action, T1 param1, T2 param2,
-            Func<bool> suspendCondition)
+        ITasker ITasker.ThenRun<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            return (this as ITasker).ThenRunWithContinue(action, param1, param2, suspendCondition, null);
+            return (this as ITasker).ThenRunWithContinue(action, param1, param2, null);
         }
 
-        ITasker ITasker.ThenRunWithContinue<T1, T2>(Func<T1, T2, bool> action, T1 param1, T2 param2,
-            Func<bool> suspendCondition, Action continueWith)
+        ITasker ITasker.ThenRunWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
+            Action continueWith)
         {
-            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, suspendCondition, continueWith);
+            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
             var node = taskQueue.AddLast(task);
             task.PreviousFinished = node.Previous.Value.Finished;
             task.SignalError = SignalError;

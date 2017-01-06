@@ -17,9 +17,9 @@ namespace GZipTest.Tasks.Tests
             try
             {
                 var tasker = new Tasker();
-                tasker.Run(SuspendThread, "", "", null).
-                    ThenRun(SuspendThread, "", "", null).
-                    ThenRun(Devide, 1, 0, null).Start().WaitAll();
+                tasker.Run(SuspendThread, "", "").
+                    ThenRun(SuspendThread, "", "").
+                    ThenRun(Devide, 1, 0).Start().WaitAll();
             }
             catch(TaskerAggregateException ex)
             {
@@ -30,16 +30,14 @@ namespace GZipTest.Tasks.Tests
 
         }
 
-        private bool SuspendThread(string s1, string s2)
+        private void SuspendThread(string s1, string s2)
         {
             System.Threading.Thread.Sleep(1000);
-            return true;
         }
 
-        private bool Devide(int i1, int i2)
+        private void Devide(int i1, int i2)
         {
             var i = i1 / i2;
-            return true;
         }
 
     }

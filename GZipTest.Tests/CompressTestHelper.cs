@@ -7,9 +7,9 @@ using static GZipTest.Compression.Process;
 
 namespace GZipTest.Tests
 {
-    class CompressTestHelper
+    static class CompressTestHelper
     {
-        public void CompressFile(string fileToCompress)
+        public static void CompressFile(string fileToCompress)
         {
             string archiveName = fileToCompress + ".gz";
 
@@ -26,7 +26,7 @@ namespace GZipTest.Tests
             }
         }
 
-        public void CompressFileLinear(string fileToCompress)
+        public static void CompressFileLinear(string fileToCompress)
         {
             string archiveName = fileToCompress + ".2.gz";
 
@@ -42,7 +42,7 @@ namespace GZipTest.Tests
 
             }
         }
-        public void DeCompressFile(string fileToDeCompress)
+        public static void DeCompressFile(string fileToDeCompress)
         {
             string path = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -95,7 +95,7 @@ namespace GZipTest.Tests
             }
         }
 
-        bool FileEquals(string path1, string path2)
+        public static bool FileEquals(string path1, string path2)
         {
             using (var readStream1 = new FileStream(path1, FileMode.Open, FileAccess.Read))
             {
@@ -124,12 +124,12 @@ namespace GZipTest.Tests
             return true;
         }
 
-        private void ReadBuffer(Stream stream, byte[] buff)
+        private static void ReadBuffer(Stream stream, byte[] buff)
         {
             stream.Read(buff, 0, (int)Math.Min(buff.Length, stream.Length - stream.Position));
         }
 
-        private bool CompareBytes(byte[] byte1, byte[] byte2)
+        private static bool CompareBytes(byte[] byte1, byte[] byte2)
         {
             if (byte1.Length != byte2.Length)
                 return false;

@@ -14,7 +14,7 @@ namespace GZipTest.Buffering.Tests
         [TestMethod()]
         public void Write_And_Read_ChunkedMemBuffer_Test()
         {
-            var chunkedStream = new ChunkBufferedStream();
+            var chunkedStream = new ChunkBufferedStream(0);
 
             const int chunkWriteSize = 1024 * 200;
 
@@ -28,12 +28,12 @@ namespace GZipTest.Buffering.Tests
             for (; ii + count <= bytes.Length && count > 0; ii += count, count = Math.Min(bytes.Length - ii, rnd.Next(5, 9000)))
                 chunkedStream.Write(bytes, ii, count);
 
-            Assert.AreEqual(bytes.Length, chunkedStream.ChunkedMemBuffer.WorkSize());
+            Assert.AreEqual(bytes.Length, ChunkBufferedStream.ChunkedMemBuffer.WorkSize());
 
             //for (int i = 0; i < 8 * 1024; i += 1024)
             //    chunkedStream.Write(bytes, i, 1024);
 
-            var writtenBuffers = chunkedStream.ChunkedMemBuffer.WorkBuffersCount;
+            var writtenBuffers = ChunkBufferedStream.ChunkedMemBuffer.WorkBuffersCount;
 
             Byte[] testBytes = new byte[bytes.Length];
 
@@ -42,7 +42,7 @@ namespace GZipTest.Buffering.Tests
                 chunkedStream.Read(testBytes, i, 1024 * 4);
             }
 
-            Assert.AreEqual(writtenBuffers, chunkedStream.ChunkedMemBuffer.ReleasedBuffersCount);
+            Assert.AreEqual(writtenBuffers, ChunkBufferedStream.ChunkedMemBuffer.ReleasedBuffersCount);
 
             Assert.IsTrue(CompareBytes(bytes, testBytes));
         }
@@ -55,28 +55,25 @@ namespace GZipTest.Buffering.Tests
             var memBytes = toBuffer.GetFree();
 
             var count = memBytes.Capacity;
-
-            var numRead = memBytes.ReadFrom(fromStream);
+            var position = fromStream.Position;
+            var numRead = memBytes.ReadFrom(fromStream, count);
 
             if (numRead > 0)
             {
 
 
                 memBytes.SetLength(numRead);
-                toBuffer.Write(memBytes);
+                toBuffer.Write(memBytes, position, 0);
             }
-
-            if (!(numRead > 0 && numRead == count))
-            {
-
-            }
-
+            
             return numRead > 0 && numRead == count;
         }
 
         private static bool WriteFromBufferToStream(Stream toStream, ChunkedMemBuffer fromBuffer)
         {
-            var memBytes = fromBuffer.Read();
+            long position = 0;
+
+            var memBytes = fromBuffer.ReadForStream(out position, 0);
             if (memBytes != null)
             {
                 memBytes.WriteTo(toStream);

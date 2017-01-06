@@ -59,9 +59,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Alice_in_Wonderland.pdf.gz" />
-    <None Include="Resources\dadoes.pdf.gz" />
-    <None Include="Resources\Starter.xml.gz" />
+    <EmbeddedResource Include="Resources\Alice_in_Wonderland.pdf.gz" />
+    <EmbeddedResource Include="Resources\dadoes.pdf.gz" />
+    <EmbeddedResource Include="Resources\Starter.xml.gz" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GZipTest\GZipTest.Library.csproj">

@@ -3,3 +3,19 @@
 ################################################################################
 
 /GZipTestTests/obj/Debug
+/GZipTest/obj/Debug
+/GZipTest/bin/Debug
+/GZipTest.Console/bin/Debug
+/GZipTest.Tests/bin/Debug
+/GZipTest/bin/Release
+/GZipTest/obj/Release
+/GZipTest.Tests/obj
+/GZipTest.Tests/bin/Release
+*.exe
+*.dll
+*.gz
+*.pdb
+*.config
+*.manifest
+*.cache
+*.txt
