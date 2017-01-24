@@ -16,9 +16,11 @@ namespace GZipTest.Tasks
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
             public Exception Exception { get; private set; }
             public Action SignalError { get; set; }
-            private Action ContinueWith { get; set; }
+            private Action<T1> ContinueWith { get; set; }
 
             public bool Finished() { return _finished;  }
+
+            public string Name { get; set; }
 
             public Func<bool> PreviousFinished
             {
@@ -34,7 +36,7 @@ namespace GZipTest.Tasks
             }
 
             public Task(Action<T1, T2> action, T1 param1, T2 param2,
-                Action continueWith = null)
+                Action<T1> continueWith = null)
             {
                 _action = action;
                 _param1 = param1;
@@ -46,7 +48,7 @@ namespace GZipTest.Tasks
             {
                 Thread thread = new Thread(this.DoWork);
                 thread.IsBackground = true;
-                thread.Name = _action.Method.Name;
+                thread.Name =  Name ?? _action.Method.Name;
                 thread.Start();
             }
 
@@ -66,7 +68,7 @@ namespace GZipTest.Tasks
                     } while (PreviousFinished != null && !PreviousFinished());
 
                     //invoke additional action if specified
-                    ContinueWith?.Invoke();
+                    ContinueWith?.Invoke(_param1);
                 }
                 catch (Exception exception)
                 {

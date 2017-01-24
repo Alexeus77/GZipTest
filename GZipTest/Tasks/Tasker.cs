@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 
 namespace GZipTest.Tasks
 {
@@ -9,7 +10,7 @@ namespace GZipTest.Tasks
     public partial class Tasker : ITasker
     {
         LinkedList<ITask> taskQueue = new LinkedList<ITask>();
-        
+
         public ITasker Run<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
             Task<T1, T2> task = new Task<T1, T2>(action, param1, param2);
@@ -21,19 +22,24 @@ namespace GZipTest.Tasks
 
         ITasker ITasker.ThenRun<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            return (this as ITasker).ThenRunWithContinue(action, param1, param2, null);
-        }
-
-        ITasker ITasker.ThenRunWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
-            Action continueWith)
-        {
-            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
+            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, null);
             var node = taskQueue.AddLast(task);
             task.PreviousFinished = node.Previous.Value.Finished;
             task.SignalError = SignalError;
 
             return this as ITasker;
         }
+
+        //ITasker ITasker.ThenRunWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
+        //    Action continueWith)
+        //{
+        //    Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
+        //    var node = taskQueue.AddLast(task);
+        //    task.PreviousFinished = node.Previous.Value.Finished;
+        //    task.SignalError = SignalError;
+
+        //    return this as ITasker;
+        //}
 
 
         ITasker ITasker.Start()
@@ -48,7 +54,7 @@ namespace GZipTest.Tasks
         {
             foreach (ITask task in taskQueue)
                 task.StartSync();
-            
+
         }
 
         void SignalError()
@@ -88,6 +94,36 @@ namespace GZipTest.Tasks
             }
         }
 
-        
+        public bool SuspendAction()
+        {
+            Thread.Sleep(100);
+            return !previousFinishedForSuspend();
+        }
+
+        Func<bool> previousFinishedForSuspend = () => { return true; };
+
+        public ITasker ThenRunForEach<T1, T2>(IEnumerable<T1> objects, Action<T1, T2> action1, Action<T1> continueWith, 
+            Func<bool> suspendOuterAction, T2 param2)
+        {
+            Func<bool> previousFinished = () => { return true; };
+            if (taskQueue.Count > 0)
+                previousFinished = taskQueue.Last.Value.Finished;
+
+            
+            previousFinishedForSuspend = previousFinished;
+
+            int taskNum = 1;
+
+            foreach (var obj in objects)
+            {
+                Task<T1, T2> task = new Task<T1, T2>(action1, obj, param2, continueWith);
+                task.Name = $"{action1.Method.Name}#{taskNum++}";
+                var node = taskQueue.AddLast(task);
+                task.PreviousFinished = previousFinished;
+                task.SignalError = SignalError;
+            }
+
+            return this as ITasker;
+        }
     }
 }

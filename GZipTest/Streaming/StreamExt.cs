@@ -15,26 +15,45 @@ namespace GZipTest.Streaming
             return numRead;
         }
 
-        public static void WriteHeader(this Stream stream, byte streamId, long blockLength)
+        public static void WriteHeader(this Stream stream, byte streamId, long blockPosition, long blockLength)
         {
             //write stream number of the block
             stream.WriteByte(streamId);
+
+            //write block position
+            var positionBytes = System.BitConverter.GetBytes(blockPosition);
+            stream.Write(positionBytes, 0, positionBytes.Length);
 
             //write block length
             var lengthBytes = System.BitConverter.GetBytes((short)blockLength);
             stream.Write(lengthBytes, 0, lengthBytes.Length);
         }
 
-        public static void ReadHeader(this Stream stream, out byte streamId, out long blockLength)
+        public static bool ReadHeader(this Stream stream, out byte streamId, out long blockPosition, out long blockLength)
         {
-            ///read block length
+            if (stream.Length - stream.Position > 1 + sizeof(short))
+            {
 
-            //read stream number of the block
-            streamId = (byte)stream.ReadByte();
+                ///read block length
 
-            var lengthBytes = new byte[sizeof(short)];
-            stream.Read(lengthBytes, 0, lengthBytes.Length);
-            blockLength = (long)System.BitConverter.ToInt16(lengthBytes, 0);
+                //read stream number of the block
+                streamId = (byte)stream.ReadByte();
+
+                var positionBytes = new byte[sizeof(long)];
+                stream.Read(positionBytes, 0, positionBytes.Length);
+                blockPosition = System.BitConverter.ToInt64(positionBytes, 0);
+
+                var lengthBytes = new byte[sizeof(short)];
+                stream.Read(lengthBytes, 0, lengthBytes.Length);
+                blockLength = (long)System.BitConverter.ToInt16(lengthBytes, 0);
+
+                return true;
+            }
+
+            streamId = 0;
+            blockLength = 0;
+            blockPosition = 0;
+            return false;
         }
 
     }

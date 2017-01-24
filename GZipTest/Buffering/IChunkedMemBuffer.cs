@@ -4,16 +4,17 @@ namespace GZipTest.Buffering
 {
     interface IChunkedMemBuffer
     {
-        MemoryStream GetFree();
-        MemoryStream Read();
-        MemoryStream Read(out long position);
-        MemoryStream Read(out long position, out byte streamNumber);
-        MemoryStream ReadForStream(out long position, byte streamNumber);
-        void Release(MemoryStream memBytes);
-        void Write(MemoryStream memBytes, long Position);
-        void Write(MemoryStream memBytes, long Position, byte streamNumber);
+        int ReleasedBuffersCount { get; }
         byte StreamsCount { get; set; }
+        int WorkBuffersCount { get; }
 
-        long WorkSize();
+        MemoryStream FromCompressBuffers(long position);
+        MemoryStream FromCompressBuffers(out long position, out byte streamId);
+        MemoryStream GetFreeMem();
+        long GetPosition();
+        MemoryStream ReadBuf(out long position);
+        void ReleaseMem(MemoryStream memBytes);
+        void ToCompressBuffers(MemoryStream memBytes, long position, byte streamId);
+        void WriteBuf(MemoryStream memBytes, long position);
     }
 }

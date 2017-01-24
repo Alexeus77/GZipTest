@@ -21,44 +21,86 @@ namespace GZipTest.Compression
 
         private static void CompressParallel(Stream readStream, Stream writeStream)
         {
-            IChunkedMemBuffer buff = new ChunkedMemBuffer();
-            var chunkedStream = new ChunkBufferedStream(0);
-            var gzip = new GZipStream(chunkedStream, CompressionMode.Compress);
+            const int parallelCompressions = 1;
 
-            IChunkedMemBuffer buff2 = new ChunkedMemBuffer();
-            var chunkedStream2 = new ChunkBufferedStream(1);
-            var gzip2 = new GZipStream(chunkedStream2, CompressionMode.Compress);
+            var buff = new BuffManager(parallelCompressions);
+            var gZipStreams = GetGZipStreams(buff, parallelCompressions, CompressionMode.Compress);
 
             Tasker tasker = new Tasker();
             tasker.Run(CompressorProcedures.ReadAllFromStreamToBuffer, readStream, buff).
-                ThenRunWithContinue(CompressorProcedures.CompressAllToChunkedStream, gzip, buff, () => { gzip.Close(); }).
-                ThenRunWithContinue(CompressorProcedures.CompressAllToChunkedStream, gzip2, buff, () => { gzip2.Close(); }).
-                ThenRun(CompressorProcedures.WriteAllCompressedFromBufferToStream, writeStream,
-                ChunkBufferedStream.ChunkedMemBuffer).
+                ThenRunForEach(gZipStreams, CompressorProcedures.CompressAllToChunkedStream, (gzip) => { gzip.Close(); },
+                    buff.SuspendAction, buff).
                 Start().WaitAll();
 
+            CompressorProcedures.WriteAllCompressedToStream(writeStream, buff);
 
+        }
+
+        private static GZipStream[] GetGZipStreams(BuffManager buffManager, int parallelCompressions, CompressionMode compressionMode)
+        {
+            GZipStream[] gzipStreams = new GZipStream[parallelCompressions];
+            ChunkBufferedStream[] chunkedStreams = new ChunkBufferedStream[parallelCompressions];
+
+            for (byte i = 0; i < parallelCompressions; i++)
+            {
+                chunkedStreams[i] = new ChunkBufferedStream(i, buffManager);
+                gzipStreams[i] = new GZipStream(chunkedStreams[i], compressionMode);
+            }
+
+            return gzipStreams;
         }
 
         private static void DeCompressParallel(Stream readStream, Stream writeStream)
         {
-            IChunkedMemBuffer buff = new ChunkedMemBuffer();
-            var chunkedStream = new ChunkBufferedStream(0);
-            var gzip = new GZipStream(chunkedStream, CompressionMode.Decompress);
 
-            IChunkedMemBuffer buff2 = new ChunkedMemBuffer();
-            var chunkedStream2 = new ChunkBufferedStream(1);
-            var gzip2 = new GZipStream(chunkedStream2, CompressionMode.Decompress);
+            const int parallelCompressions = 1;
+
+            var buff = new BuffManager(parallelCompressions);
+            var gZipStreams = GetGZipStreams(buff, parallelCompressions, CompressionMode.Decompress);
+
             Tasker tasker = new Tasker();
 
-            tasker.Run(CompressorProcedures.ReadAllFromCompressedStreamToBuffer, readStream, ChunkBufferedStream.ChunkedMemBuffer).
-                ThenRunWithContinue(CompressorProcedures.ReadAllFromGZipStreamToBuffer, gzip, buff, () => { gzip.Close(); }).
-                ThenRunWithContinue(CompressorProcedures.ReadAllFromGZipStreamToBuffer, gzip2, buff, () => { gzip2.Close(); }).
-                ThenRun(CompressorProcedures.WriteAllFromBufferToStream, writeStream, buff).
+            buff.SuspendAction = tasker.SuspendAction;
+
+            tasker.Run(CompressorProcedures.ReadFromCompressedStreamToBuffer, readStream, buff).
+                ThenRunForEach(gZipStreams, CompressorProcedures.DecompressToBufferToBuffer, (gzip) => { gzip.Close(); },
+                buff.SuspendAction, buff).
+
                 Start().WaitAll();
 
+            CompressorProcedures.WriteDecompressedToStream(writeStream, buff);
+
         }
+
+        //private static void CompressSeq(Stream readStream, Stream writeStream)
+        //{
+        //    var buff = new BuffManager(2);
+        //    var chunkedStream = new ChunkBufferedStream(0, buff);
+        //    var gzip = new GZipStream(chunkedStream, CompressionMode.Compress);
+
+        //    CompressorProcedures.ReadAllFromStreamToBuffer(readStream, buff);
+        //    CompressorProcedures.CompressAllToChunkedStream(gzip, buff);
+        //    gzip.Close();
+        //    CompressorProcedures.WriteAllCompressedToStream(writeStream, buff);
+
+        //}
+
+        //private static void DeCompressSeq(Stream readStream, Stream writeStream)
+        //{
+        //    var buff = new BuffManager(2);
+        //    var chunkedStream = new ChunkBufferedStream(0, buff);
+        //    var gzip = new GZipStream(chunkedStream, CompressionMode.Decompress);
+
+        //    CompressorProcedures.ReadFromCompressedStreamToBuffer(readStream, buff);
+        //    CompressorProcedures.DecompressToBufferToBuffer(gzip, buff);
+        //    gzip.Close();
+
+        //    CompressorProcedures.WriteDecompressedToStream(writeStream, buff);
+
+        //}
 
     }
 
 }
+
+

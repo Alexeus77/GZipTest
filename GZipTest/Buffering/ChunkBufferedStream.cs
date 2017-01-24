@@ -8,17 +8,16 @@ namespace GZipTest.Buffering
 {
     class ChunkBufferedStream : Stream
     {
-        private static ChunkedMemBuffer _chunkedMemBuffer = new ChunkedMemBuffer();
+        private BuffManager _chunkedMemBuffer;
         
         public byte Id { get; private set; }
 
-        public ChunkBufferedStream(byte id)
+        public ChunkBufferedStream(byte id, BuffManager chunkedMemBuffer)
         {
             Id = id;
-            _chunkedMemBuffer.StreamsCount ++;
+            _chunkedMemBuffer = chunkedMemBuffer;
         }
                 
-        public static ChunkedMemBuffer ChunkedMemBuffer { get { return _chunkedMemBuffer; } }
         
         public override long Position { get; set; }
         
@@ -75,7 +74,7 @@ namespace GZipTest.Buffering
         #endregion not implemented
 
 
-        private MemoryStream _mem = null;
+        private MemoryStream _memCurrent = null;
         private bool _restRead = false;
 
         public Queue<long> ReadPositions { get; set; } = new Queue<long>();
@@ -88,9 +87,9 @@ namespace GZipTest.Buffering
             do
             {
                 long position = 0;
-                
+
                 //dequeue memstream from chunked buffer or use previously saved memstream
-                MemoryStream memBytes = _restRead ? _mem : _chunkedMemBuffer.ReadForStream(out position, Id);
+                var memBytes = _restRead ? _memCurrent : _chunkedMemBuffer.ReadCompressedBufferForStream(out position, Id);
                 
                 if (memBytes == null)
                     break;
@@ -119,9 +118,9 @@ namespace GZipTest.Buffering
 
                 //save current memstream to use on the next read or release it in chunked buffer
                 if (_restRead)
-                    _mem = memBytes;
+                    _memCurrent = memBytes;
                 else
-                    _chunkedMemBuffer.Release(memBytes);
+                    _chunkedMemBuffer.ReleaseMem(memBytes);
 
             } while (bytesToRead > 0);
 
@@ -129,7 +128,8 @@ namespace GZipTest.Buffering
             //return actual count of bytes read by procedure
             return count - bytesToRead;
         }
-        
+
+        private long _positionWritten = 0;
 
         public override void Write(byte[] buffer, int offset, int count)
         {
@@ -138,15 +138,19 @@ namespace GZipTest.Buffering
                 return;
             
             //get memstream available for writing from chunked buffer (new or reused)
-            MemoryStream memBytes = _chunkedMemBuffer.GetFree();
+            MemoryStream memBytes = _positionWritten == Position && _memCurrent != null ?
+                _memCurrent : _chunkedMemBuffer.GetFreeMem();
 
             //write memstream and its length
             memBytes.Write(buffer, offset, count);
-            memBytes.SetLength(count);
+            memBytes.SetLength(memBytes.Position);
 
             //enqueue memstream to chunked buffer with position ordering and stream number indication
-            _chunkedMemBuffer.Write(memBytes, Position, Id);
-            Position += count;
+            if(_positionWritten != Position)
+                _chunkedMemBuffer.WriteCompressedBuffer(memBytes, Position, Id);
+
+            _positionWritten = Position;
+            _memCurrent = memBytes;
 
            // WriteLine($"ZW::{Id} {Position} {count}");
 

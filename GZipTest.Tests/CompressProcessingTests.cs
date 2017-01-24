@@ -38,8 +38,8 @@ namespace GZipTest.Tests
         {
             //foreach (var resName in GetCompressedResourcesNames())
 
-            var resName = GetCompressedResourcesNames().Where(n => n.Contains("Starter")).
-            First();
+                var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
+                Skip(0).First();
 
             {
                 Stream resStream;
@@ -54,13 +54,10 @@ namespace GZipTest.Tests
                 Stream decompressedToTest = new MemoryStream();
                 Decompress(compressedToTest, decompressedToTest);
 
+                Assert.IsTrue(decompressed.Length == decompressedToTest.Length, "Decompressed streams lengths are not equal.");
+
                 Assert.IsTrue(CompareStreams(decompressed, decompressedToTest));
-
-                //using (Stream w = new FileStream(@"C:\ISO\1\1.pdf", FileMode.Create, FileAccess.Write))
-                //{
-                //    (decompressed as MemoryStream).WriteTo(w);
-                //}
-
+                
             }
         }
 
