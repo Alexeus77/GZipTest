@@ -51,7 +51,6 @@
     <Compile Include="Buffering\BuffManager.cs" />
     <Compile Include="Buffering\ParallelBuf.cs" />
     <Compile Include="Buffering\ParallelBufQueue.cs" />
-    <Compile Include="Buffering\IChunkedMemBuffer.cs" />
     <Compile Include="Buffering\SeqBuf.cs" />
     <Compile Include="Compression\CompressorProcedures.cs" />
     <Compile Include="Compression\CompressProcessing.cs" />

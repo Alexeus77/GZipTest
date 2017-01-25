@@ -7,7 +7,8 @@ namespace GZipTest.Tasks
     {
         private interface ITask
         {
-            bool Finished();
+            bool FinishedFlag { get; }
+            Func<bool> Finished { get; set; }
             ManualResetEvent FinishedEvent { get; }
             Exception Exception { get; }
             void Start();

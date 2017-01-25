@@ -22,24 +22,25 @@ namespace GZipTest.Tasks
 
         ITasker ITasker.ThenRun<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, null);
+            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2);
+            task.SignalError = SignalError;
+
+            var node = taskQueue.AddLast(task);
+            task.PreviousFinished = node.Previous.Value.Finished;
+
+            return this as ITasker;
+        }
+
+        ITasker ITasker.ThenRunWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
+            Action<T1, T2> continueWith)
+        {
+            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
             var node = taskQueue.AddLast(task);
             task.PreviousFinished = node.Previous.Value.Finished;
             task.SignalError = SignalError;
 
             return this as ITasker;
         }
-
-        //ITasker ITasker.ThenRunWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
-        //    Action continueWith)
-        //{
-        //    Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
-        //    var node = taskQueue.AddLast(task);
-        //    task.PreviousFinished = node.Previous.Value.Finished;
-        //    task.SignalError = SignalError;
-
-        //    return this as ITasker;
-        //}
 
 
         ITasker ITasker.Start()
@@ -96,7 +97,7 @@ namespace GZipTest.Tasks
 
         public bool SuspendAction()
         {
-            Thread.Sleep(100);
+            Thread.Sleep(50);
             return !previousFinishedForSuspend();
         }
 
@@ -118,7 +119,12 @@ namespace GZipTest.Tasks
             {
                 Task<T1, T2> task = new Task<T1, T2>(action1, obj, param2, continueWith);
                 task.Name = $"{action1.Method.Name}#{taskNum++}";
+
                 var node = taskQueue.AddLast(task);
+                if(taskNum > 1)
+                    task.Finished = 
+                        () => 
+                        { return task.FinishedFlag && node.Previous.Value.Finished(); };
                 task.PreviousFinished = previousFinished;
                 task.SignalError = SignalError;
             }

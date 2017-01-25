@@ -6,7 +6,7 @@ namespace GZipTest.Buffering
 {
     class BuffManager 
     {
-        const int chunkSize = 1024 * 8;
+        public const int ChunkSize = 1024 * 8;
 
         SeqBuf _seqBuf = new SeqBuf();
 
@@ -47,6 +47,14 @@ namespace GZipTest.Buffering
             }
 
             return -1;
+        }
+
+        public bool AtEndOfSequence()
+        {
+            lock (_sequencePositions)
+            {
+                return _sequencePositions.Count == 1;
+            }
         }
 
         public void NextSequencePos()
@@ -134,7 +142,7 @@ namespace GZipTest.Buffering
                     return _releasedBuffer.Dequeue();
             }
 
-            return new MemoryStream(chunkSize);
+            return new MemoryStream(ChunkSize);
         }
 
     }

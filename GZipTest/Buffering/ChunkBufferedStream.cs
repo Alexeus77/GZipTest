@@ -152,7 +152,7 @@ namespace GZipTest.Buffering
             _positionWritten = Position;
             _memCurrent = memBytes;
 
-           // WriteLine($"ZW::{Id} {Position} {count}");
+            WriteLine($"ZW::{Id} {Position} {count}");
 
         }
         

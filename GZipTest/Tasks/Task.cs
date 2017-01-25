@@ -12,15 +12,28 @@ namespace GZipTest.Tasks
             T1 _param1;
             T2 _param2;
             bool _finished;
-            
+            object _lockObject = new object();
+
+            public string Name { get; set; }
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
             public Exception Exception { get; private set; }
             public Action SignalError { get; set; }
             private Action<T1> ContinueWith { get; set; }
+            private Action<T1, T2> ContinueWith2 { get; set; }
+            public Func<bool> Finished { get; set; }
+            public bool FinishedFlag
+            {
+                get
+                {
+                    lock (_lockObject) { return _finished; }
+                }
+                private set
+                {
+                    lock (_lockObject) { _finished = value; }
+                }
+            }
 
-            public bool Finished() { return _finished;  }
-
-            public string Name { get; set; }
+            
 
             public Func<bool> PreviousFinished
             {
@@ -35,13 +48,37 @@ namespace GZipTest.Tasks
                 }
             }
 
-            public Task(Action<T1, T2> action, T1 param1, T2 param2,
-                Action<T1> continueWith = null)
+            private Task()
+            {
+                Finished = () => { return FinishedFlag; };
+            }
+
+            public Task(Action<T1, T2> action, T1 param1, T2 param2) : this()
             {
                 _action = action;
                 _param1 = param1;
                 _param2 = param2;
+                Name = _action.Method.Name;
+            }
+
+            public Task(Action<T1, T2> action, T1 param1, T2 param2,
+                Action<T1> continueWith = null) : this(action, param1, param2)
+            {
+                _action = action;
+                _param1 = param1;
+                _param2 = param2;
+                Name = _action.Method.Name;
                 ContinueWith = continueWith;
+            }
+
+            public Task(Action<T1, T2> action, T1 param1, T2 param2,
+                Action<T1, T2> continueWith = null) : this(action, param1, param2)
+            {
+                _action = action;
+                _param1 = param1;
+                _param2 = param2;
+                Name = _action.Method.Name;
+                ContinueWith2 = continueWith;
             }
 
             public void Start()
@@ -65,10 +102,11 @@ namespace GZipTest.Tasks
                     do
                     {
                         _action(_param1, _param2);
-                    } while (PreviousFinished != null && !PreviousFinished());
+                    } while (PreviousFinished != null && !PreviousFinished() && DoSuspend());
 
                     //invoke additional action if specified
                     ContinueWith?.Invoke(_param1);
+                    ContinueWith2?.Invoke(_param1, _param2);
                 }
                 catch (Exception exception)
                 {
@@ -77,7 +115,7 @@ namespace GZipTest.Tasks
                 }
                 finally
                 {
-                    _finished = true;
+                    FinishedFlag = true;
 
                     if (Exception != null)
                         //signal error to for other threads in chain
@@ -88,6 +126,14 @@ namespace GZipTest.Tasks
                     FinishedEvent.Set();
                 }
             }
+
+            private bool DoSuspend()
+            {
+                //Thread.Sleep(50);
+                return true;
+            }
         }
+
+        
     }
 }

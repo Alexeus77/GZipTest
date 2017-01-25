@@ -21,14 +21,8 @@ namespace GZipTest.Tests
         [TestMethod()]
         public void CompressDecompressFile()
         {
-            string source = @"C:\\ISO\\1\\Alice_in_Wonderland.pdf";
-            GZipTest.Tests.CompressTestHelper.
+            string source = @"C:\\ISO\\1\\XPSP3Min.iso";
             CompressFile(source);
-            //CompressFileLinear(source);
-
-            //Assert.IsTrue(FileEquals(source + ".gz", source + ".2.gz"));
-
-            //DeCompressFile(source + ".2.gz");
             DeCompressFile(source + ".gz");
             Assert.IsTrue(FileEquals(source, source + ".gz.iso"));
         }
@@ -38,26 +32,32 @@ namespace GZipTest.Tests
         {
             //foreach (var resName in GetCompressedResourcesNames())
 
-                var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
-                Skip(0).First();
-
+            for (int i = 0; i < 100; i++)
             {
-                Stream resStream;
-                Stream decompressed = GetDecompressedResource(resName, out resStream);
-                decompressed.Position = 0;
 
-                Stream compressedToTest = new MemoryStream();
-                Compress(decompressed, compressedToTest);
 
-                compressedToTest.Position = 0;
+                var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
+                Skip(2).First();
 
-                Stream decompressedToTest = new MemoryStream();
-                Decompress(compressedToTest, decompressedToTest);
+                {
+                    Stream resStream;
+                    Stream decompressed = GetDecompressedResource(resName, out resStream);
+                    decompressed.Position = 0;
 
-                Assert.IsTrue(decompressed.Length == decompressedToTest.Length, "Decompressed streams lengths are not equal.");
+                    Stream compressedToTest = new MemoryStream();
+                    Compress(decompressed, compressedToTest);
 
-                Assert.IsTrue(CompareStreams(decompressed, decompressedToTest));
-                
+                    compressedToTest.Position = 0;
+
+                    Stream decompressedToTest = new MemoryStream();
+                    Decompress(compressedToTest, decompressedToTest);
+
+                    Assert.IsTrue(decompressed.Length == decompressedToTest.Length, 
+                        $"Decompressed streams lengths are not equal. Iteration {i}");
+
+                    Assert.IsTrue(CompareStreams(decompressed, decompressedToTest));
+
+                }
             }
         }
 
