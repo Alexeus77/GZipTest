@@ -9,6 +9,12 @@ namespace GZipTest.Buffering
         Queue<MemoryStream> _compressBuffer = new Queue<MemoryStream>();
         Queue<long> _compressPositions = new Queue<long>();
 
+        public int Count
+        {
+            get { return _compressBuffer.Count; }
+        }
+
+
         public void Enqueue(MemoryStream memBytes, long position)
         {
             lock (_compressBuffer)

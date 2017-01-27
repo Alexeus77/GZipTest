@@ -104,6 +104,8 @@ namespace GZipTest.Tasks
                         _action(_param1, _param2);
                     } while (PreviousFinished != null && !PreviousFinished() && DoSuspend());
 
+                    _action(_param1, _param2);
+
                     //invoke additional action if specified
                     ContinueWith?.Invoke(_param1);
                     ContinueWith2?.Invoke(_param1, _param2);
@@ -129,7 +131,7 @@ namespace GZipTest.Tasks
 
             private bool DoSuspend()
             {
-                //Thread.Sleep(50);
+                Thread.Sleep(0);
                 return true;
             }
         }

@@ -5,48 +5,68 @@ namespace GZipTest.Buffering
 
     class ParallelBufQueue
     {
-        ParallelBuf[] _compressBuffers;
+        ParallelBuf[] _parallelBuffers;
+
+        int _memBuffersCount = 0;
+
+        public int GetMemBuffersCount()
+        {
+            return _memBuffersCount;
+        }
+
 
         public ParallelBufQueue(int streamsNumber)
         {
-            _compressBuffers = new ParallelBuf[streamsNumber];
+            _parallelBuffers = new ParallelBuf[streamsNumber];
 
             for (int i = 0; i < streamsNumber; i++)
             {
-                _compressBuffers[i] = new ParallelBuf();
+                _parallelBuffers[i] = new ParallelBuf();
             }
         }
 
         public void Enqueue(MemoryStream memBytes, long position, byte streamId)
         {
-            _compressBuffers[streamId].Enqueue(memBytes, position);
+            _parallelBuffers[streamId].Enqueue(memBytes, position);
+            System.Threading.Interlocked.Increment(ref _memBuffersCount);
         }
 
         public MemoryStream Dequeue(byte streamId)
         {
-            return _compressBuffers[streamId].Dequeue();
+            var memoryBytes = _parallelBuffers[streamId].Dequeue();
+            if (memoryBytes != null)
+                System.Threading.Interlocked.Decrement(ref _memBuffersCount);
+            return memoryBytes;
+
         }
 
         public MemoryStream Dequeue(long position)
         {
-            for (int i = 0; i < _compressBuffers.Length; i++)
+            for (int i = 0; i < _parallelBuffers.Length; i++)
             {
-                var memoryBytes = _compressBuffers[i].Dequeue(position);
+                var memoryBytes = _parallelBuffers[i].Dequeue(position);
                 if (memoryBytes != null)
+                {
+                    System.Threading.Interlocked.Decrement(ref _memBuffersCount);
                     return memoryBytes;
+                }
             }
             return null;
         }
 
-        public MemoryStream Dequeue(long position, out byte streamId)
+        public MemoryStream Dequeue(long position, out byte streamId, bool getTail)
         {
-            for (byte i = 0; i < _compressBuffers.Length; i++)
+            for (byte i = 0; i < _parallelBuffers.Length; i++)
             {
-                var memoryBytes = _compressBuffers[i].Dequeue(position);
-                if (memoryBytes != null)
+                if (_parallelBuffers[i].Count > 1 || getTail)
                 {
-                    streamId = i;
-                    return memoryBytes;
+                    var memoryBytes = _parallelBuffers[i].Dequeue(position);
+                    if (memoryBytes != null)
+                    {
+                        System.Threading.Interlocked.Decrement(ref _memBuffersCount);
+                        streamId = i;
+                        return memoryBytes;
+                    }
                 }
             }
 
@@ -56,11 +76,12 @@ namespace GZipTest.Buffering
 
         public MemoryStream Dequeue(out long position, out byte streamId)
         {
-            for (byte i = 0; i < _compressBuffers.Length; i++)
+            for (byte i = 0; i < _parallelBuffers.Length; i++)
             {
-                var memoryBytes = _compressBuffers[i].Dequeue(out position);
+                var memoryBytes = _parallelBuffers[i].Dequeue(out position);
                 if (memoryBytes != null)
                 {
+                    System.Threading.Interlocked.Decrement(ref _memBuffersCount);
                     streamId = i;
                     return memoryBytes;
                 }
@@ -72,7 +93,11 @@ namespace GZipTest.Buffering
 
         public MemoryStream Dequeue(out long position, byte streamId)
         {
-            return _compressBuffers[streamId].Dequeue(out position);
+            var memoryBytes = _parallelBuffers[streamId].Dequeue(out position);
+            if (memoryBytes != null)
+                System.Threading.Interlocked.Decrement(ref _memBuffersCount);
+
+            return memoryBytes;
         }
     }
 }

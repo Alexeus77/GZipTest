@@ -2,6 +2,7 @@
 using System.IO.Compression;
 using GZipTest.Buffering;
 using GZipTest.Streaming;
+using static GZipTest.DebugDiagnostics;
 
 namespace GZipTest.Compression
 {
@@ -46,7 +47,7 @@ namespace GZipTest.Compression
             {
                 //set underlying stream's position to preserve ordering in stream's buffer
                 toStream.BaseStream.Position = position;
-                WriteLine($"C::{(toStream.BaseStream as ChunkBufferedStream).Id} {position} {memBytes.Length}");
+                WriteLine($"C::{(toStream.BaseStream as Buffering.BufferedStream).Id} {position} {memBytes.Length}");
                 //compress data
                 memBytes.WriteTo(toStream);
 
@@ -54,12 +55,7 @@ namespace GZipTest.Compression
                 fromBuffer.ReleaseMem(memBytes);
             }
         }
-
-        private static void WriteLine(string message)
-        {
-            System.Diagnostics.Debug.WriteLine(message);
-        }
-
+        
         public static void WriteCompressedBufferToStream(Stream toStream, BuffManager fromBuffer)
         {
 
@@ -70,16 +66,17 @@ namespace GZipTest.Compression
             if (fromBuffer.AtEndOfSequence())
                 return;
 
+            
             //we need position for correct block ordering
             long position = fromBuffer.GetSequencePos();
 
             
 
             //we get blocks in order. we get id of holding stream and store it in output stream
-            while (position != -1 && (memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId)) != null)
+            while (position != -1 && (memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, false)) != null)
             {
-                WriteLine($"WC::{streamId} {position} {memBytes.Length}");
-
+                WriteLine2($"WC::{streamId} {position} {memBytes.Length} {fromBuffer.CompressedBuffersCount()}");
+                
                 //write block header
                 toStream.WriteHeader(streamId, position, memBytes.Length);
 
@@ -111,10 +108,10 @@ namespace GZipTest.Compression
             long position = fromBuffer.GetSequencePos();
 
             //we get blocks in order. we get id of holding stream and store it in output stream
-            while (position != -1 && (memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId)) != null)
+            while (position != -1 && (memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, true)) != null)
             {
                 WriteLine($"WC::{streamId} {position} {memBytes.Length}");
-
+                
                 //write block header
                 toStream.WriteHeader(streamId, position, memBytes.Length);
 
@@ -176,15 +173,9 @@ namespace GZipTest.Compression
             }
         }
 
-        /// <summary>
-        /// Decompresses data with GZipStream through chunked stream to chunked buffer
-        /// </summary>
-        /// <param name="fromStream">GZip stream with chunked stream as a base</param>
-        /// <param name="buffer">Chunked buffer to hold decompressed data</param>
-        /// <returns></returns>
-        public static void DecompressToBufferToBuffer(GZipStream fromStream, BuffManager toBuffer)
+        public static void DecompressFromStreamToBuffer(GZipStream fromStream, BuffManager toBuffer)
         {
-            var chunkedStream = fromStream.BaseStream as ChunkBufferedStream;
+            var chunkedStream = fromStream.BaseStream as Buffering.BufferedStream;
             System.Diagnostics.Debug.Assert(chunkedStream != null, "The base stream for decompression is not of the valid type. Must be of ChunkBufferedStream type.");
             
 
@@ -201,19 +192,22 @@ namespace GZipTest.Compression
                 //all positions read are queued and also blocks should be chained 
                 //in the same order comparative with other threads' streams
 
+                memBytes.SetLength(numRead);
+
                 if (chunkedStream.ReadPositions.Count > 0)
+                {
                     position = chunkedStream.ReadPositions.Dequeue();
+                    toBuffer.WriteDecompressedBuffer(memBytes, position, chunkedStream.Id);
+                }
                 else
                 {
-                    memCurrent = toBuffer.ReadDeCompressedBufferForStream(out position, chunkedStream.Id);
                     memBytes.WriteTo(memCurrent);
                 }
 
                 WriteLine($"D::{chunkedStream.Id} {position} {numRead}");
+                
 
-
-                memBytes.SetLength(numRead);
-                toBuffer.WriteDecompressedBuffer(memBytes, position, chunkedStream.Id);
+                memCurrent = memBytes;
 
                 memBytes = toBuffer.GetFreeMem();
 

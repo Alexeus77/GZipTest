@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System;
+using static GZipTest.DebugDiagnostics;
 
 namespace GZipTest.Buffering
 {
-    class BuffManager 
+    class BuffManager
     {
         public const int ChunkSize = 1024 * 8;
 
@@ -17,13 +18,22 @@ namespace GZipTest.Buffering
         Queue<MemoryStream> _releasedBuffer = new Queue<MemoryStream>();
 
 
-        public int WorkBuffersCount { get { return 0; } }
-        public int ReleasedBuffersCount { get { return _releasedBuffer.Count; } }
+        public int CompressedBuffersCount()
+        {
+            return _compressedBuffers.GetMemBuffersCount();
+         }
+
+        public int DeCompressedBuffersCount()
+        {
+            return _decompressedBuffers.GetMemBuffersCount();
+        }
+
+        public int SeqBuffersCount() { return _seqBuf.BufCount; }
+        
+        public int ReleasedBuffersCount() { return _releasedBuffer.Count; }
 
         public Func<bool> SuspendAction = () => { return false; };
-
-        public byte StreamsCount { get; set; }
-
+        
         public BuffManager(int streamsNumber)
         {
             _compressedBuffers = new ParallelBufQueue(streamsNumber);
@@ -69,7 +79,13 @@ namespace GZipTest.Buffering
         public void WriteSequenceBuf(MemoryStream memBytes, long position)
         {
             _seqBuf.Write(memBytes, position);
-            
+
+            if (_seqBuf.BufCount > 1000)
+            {
+                WriteLine($"{DateTime.Now}:{_seqBuf.BufCount}");
+                SuspendAction();
+            }
+
         }
 
         public MemoryStream ReadSequenceBuf(out long position)
@@ -92,17 +108,15 @@ namespace GZipTest.Buffering
             return _decompressedBuffers.Dequeue(position);
         }
 
-        public MemoryStream ReadCompressedBuffer(long position, out byte streamId)
+        public MemoryStream ReadCompressedBuffer(long position, out byte streamId, bool getTail)
         {
-            return _compressedBuffers.Dequeue(position, out streamId);
+            return _compressedBuffers.Dequeue(position, out streamId, getTail);
         }
-        
 
+        
         public MemoryStream ReadCompressedBufferForStream(out long position, byte streamId)
         {
-            var memBytes =  ReadParallelBufferForStream(_compressedBuffers, out position, streamId);
-            //AddSequencePos(position);
-            return memBytes;
+            return ReadParallelBufferForStream(_compressedBuffers, out position, streamId);
         }
 
         public MemoryStream ReadDeCompressedBufferForStream(out long position, byte streamId)
@@ -144,6 +158,8 @@ namespace GZipTest.Buffering
 
             return new MemoryStream(ChunkSize);
         }
+
+
 
     }
 }

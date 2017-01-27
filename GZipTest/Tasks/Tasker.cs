@@ -97,8 +97,13 @@ namespace GZipTest.Tasks
 
         public bool SuspendAction()
         {
-            Thread.Sleep(50);
-            return !previousFinishedForSuspend();
+            if (!previousFinishedForSuspend())
+            {
+                Thread.Sleep(0);
+                return true;
+            }
+
+            return false;
         }
 
         Func<bool> previousFinishedForSuspend = () => { return true; };

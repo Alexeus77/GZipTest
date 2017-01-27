@@ -1,26 +1,26 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
-using static System.Diagnostics.Debug;
+using static GZipTest.DebugDiagnostics;
 
 
 namespace GZipTest.Buffering
 {
-    class ChunkBufferedStream : Stream
+    class BufferedStream : Stream
     {
         private BuffManager _chunkedMemBuffer;
-        
+
         public byte Id { get; private set; }
 
-        public ChunkBufferedStream(byte id, BuffManager chunkedMemBuffer)
+        public BufferedStream(byte id, BuffManager chunkedMemBuffer)
         {
             Id = id;
             _chunkedMemBuffer = chunkedMemBuffer;
         }
-                
-        
+
+
         public override long Position { get; set; }
-        
+
         public override bool CanWrite
         {
             get
@@ -46,7 +46,7 @@ namespace GZipTest.Buffering
                 throw new NotImplementedException("CanSeek");
             }
         }
-        
+
         public override long Length
         {
             get
@@ -54,7 +54,7 @@ namespace GZipTest.Buffering
                 throw new NotImplementedException();
             }
         }
-        
+
         public override void Flush()
         {
             throw new NotImplementedException();
@@ -83,14 +83,14 @@ namespace GZipTest.Buffering
         {
             int bytesToRead = count;
             int bufferOffset = 0;
-            
+
             do
             {
                 long position = 0;
 
                 //dequeue memstream from chunked buffer or use previously saved memstream
                 var memBytes = _restRead ? _memCurrent : _chunkedMemBuffer.ReadCompressedBufferForStream(out position, Id);
-                
+
                 if (memBytes == null)
                     break;
 
@@ -98,7 +98,7 @@ namespace GZipTest.Buffering
 
                 if (!ReadPositions.Contains(position) && !_restRead)
                     ReadPositions.Enqueue(position);
-                
+
                 //min value among: 1)rest buffer 2)bytes count to read 3)rest bytes to read in current do while cycle
                 bytesToRead = (int)
                     Math.Min(buffer.Length - offset - bufferOffset,
@@ -124,7 +124,7 @@ namespace GZipTest.Buffering
 
             } while (bytesToRead > 0);
 
-            
+
             //return actual count of bytes read by procedure
             return count - bytesToRead;
         }
@@ -136,26 +136,30 @@ namespace GZipTest.Buffering
 
             if (count == 0)
                 return;
-            
+
             //get memstream available for writing from chunked buffer (new or reused)
             MemoryStream memBytes = _positionWritten == Position && _memCurrent != null ?
                 _memCurrent : _chunkedMemBuffer.GetFreeMem();
 
+            WriteLine($"ZW::{Id} {Position} {count} {memBytes.Length}");
+            
             //write memstream and its length
             memBytes.Write(buffer, offset, count);
             memBytes.SetLength(memBytes.Position);
 
             //enqueue memstream to chunked buffer with position ordering and stream number indication
-            if(_positionWritten != Position)
+            if (_positionWritten != Position)
                 _chunkedMemBuffer.WriteCompressedBuffer(memBytes, Position, Id);
+            else
+                WriteLine2($"ZW::{Id} {Position} {count} {memBytes.Length}");
 
             _positionWritten = Position;
             _memCurrent = memBytes;
 
-            WriteLine($"ZW::{Id} {Position} {count}");
+
 
         }
-        
+
     }
 
 

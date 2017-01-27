@@ -21,8 +21,12 @@ namespace GZipTest.Tests
         [TestMethod()]
         public void CompressDecompressFile()
         {
+
+
             string source = @"C:\\ISO\\1\\XPSP3Min.iso";
-            CompressFile(source);
+            CompressFile(source, source + ".gz");
+
+
             DeCompressFile(source + ".gz");
             Assert.IsTrue(FileEquals(source, source + ".gz.iso"));
         }
@@ -32,12 +36,10 @@ namespace GZipTest.Tests
         {
             //foreach (var resName in GetCompressedResourcesNames())
 
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 1; i++)
             {
-
-
                 var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
-                Skip(2).First();
+                Skip(0).First();
 
                 {
                     Stream resStream;

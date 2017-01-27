@@ -9,22 +9,22 @@ namespace GZipTest.Tests
 {
     static class CompressTestHelper
     {
-        public static void CompressFile(string fileToCompress)
+        public static void CompressFile(string fileToCompress, string archiveFile)
         {
-            string archiveName = fileToCompress + ".gz";
-
-            if (File.Exists(archiveName))
-                File.Delete(archiveName);
+            if (File.Exists(archiveFile))
+                File.Delete(archiveFile);
 
             using (var readStream = new FileStream(fileToCompress, FileMode.Open, FileAccess.Read))
             {
-                using (var writeStream = new FileStream(archiveName, FileMode.CreateNew, FileAccess.Write))
+                using (var writeStream = new FileStream(archiveFile, FileMode.CreateNew, FileAccess.Write))
                 {
-                    Compress(readStream, writeStream);
+                    TestCompress.Compress(readStream, writeStream);
                 }
 
             }
         }
+
+
 
         public static void CompressFileLinear(string fileToCompress)
         {
@@ -55,7 +55,7 @@ namespace GZipTest.Tests
             {
                 using (var writeStream = new FileStream(fileName, FileMode.CreateNew, FileAccess.Write))
                 {
-                    Decompress(readStream, writeStream);
+                    DeCompressLinear(readStream, writeStream);
                 }
 
             }
