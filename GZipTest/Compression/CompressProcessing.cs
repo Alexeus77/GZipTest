@@ -9,7 +9,7 @@ namespace GZipTest.Compression
 {
     public static class Process
     {
-        const int parallelCompressions = 4;
+        const int parallelCompressions = 8;
 
         public static void Compress(Stream fromStream, Stream toStream)
         {

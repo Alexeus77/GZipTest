@@ -18,7 +18,7 @@ namespace GZipTest.Tests
             {
                 using (var writeStream = new FileStream(archiveFile, FileMode.CreateNew, FileAccess.Write))
                 {
-                    TestCompress.Compress(readStream, writeStream);
+                    Compress(readStream, writeStream);
                 }
 
             }
@@ -55,7 +55,7 @@ namespace GZipTest.Tests
             {
                 using (var writeStream = new FileStream(fileName, FileMode.CreateNew, FileAccess.Write))
                 {
-                    DeCompressLinear(readStream, writeStream);
+                    Decompress(readStream, writeStream);
                 }
 
             }

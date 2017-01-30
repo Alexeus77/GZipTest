@@ -8,10 +8,9 @@ namespace GZipTest.Tasks
         private class Task<T1, T2> : ITask
         {
             Action<T1, T2> _action;
-            Func<bool> _previousFinished;
             T1 _param1;
             T2 _param2;
-            bool _finished;
+            volatile bool _finished;
             object _lockObject = new object();
 
             public string Name { get; set; }
@@ -33,21 +32,10 @@ namespace GZipTest.Tasks
                 }
             }
 
+
+
+            public Func<bool> PreviousFinished { get; set; } = () => { return true; };
             
-
-            public Func<bool> PreviousFinished
-            {
-                private get
-                {
-                    return _previousFinished;
-                }
-
-                set
-                {
-                    _previousFinished = value;
-                }
-            }
-
             private Task()
             {
                 Finished = () => { return FinishedFlag; };
@@ -102,9 +90,9 @@ namespace GZipTest.Tasks
                     do
                     {
                         _action(_param1, _param2);
-                    } while (PreviousFinished != null && !PreviousFinished() && DoSuspend());
+                    } while (!PreviousFinished() && DoSuspend());
 
-                    _action(_param1, _param2);
+                   // _action(_param1, _param2);
 
                     //invoke additional action if specified
                     ContinueWith?.Invoke(_param1);
@@ -131,7 +119,7 @@ namespace GZipTest.Tasks
 
             private bool DoSuspend()
             {
-                Thread.Sleep(0);
+                Thread.Sleep(100);
                 return true;
             }
         }

@@ -112,8 +112,12 @@ namespace GZipTest.Buffering
         {
             return _compressedBuffers.Dequeue(position, out streamId, getTail);
         }
+        public MemoryStream ReadCompressedBuffer(out long position, out byte streamId, bool getTail)
+        {
+            return _compressedBuffers.Dequeue(out position, out streamId, getTail);
+        }
 
-        
+
         public MemoryStream ReadCompressedBufferForStream(out long position, byte streamId)
         {
             return ReadParallelBufferForStream(_compressedBuffers, out position, streamId);

@@ -36,7 +36,7 @@ namespace GZipTest.Tests
         {
             //foreach (var resName in GetCompressedResourcesNames())
 
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 10; i++)
             {
                 var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
                 Skip(0).First();
@@ -57,7 +57,8 @@ namespace GZipTest.Tests
                     Assert.IsTrue(decompressed.Length == decompressedToTest.Length, 
                         $"Decompressed streams lengths are not equal. Iteration {i}");
 
-                    Assert.IsTrue(CompareStreams(decompressed, decompressedToTest));
+                    Assert.IsTrue(CompareStreams(decompressed, decompressedToTest),
+                        $"Decompressed streams contents are not equal. Iteration {i}");
 
                 }
             }

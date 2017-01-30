@@ -74,16 +74,19 @@ namespace GZipTest.Buffering
             return null;
         }
 
-        public MemoryStream Dequeue(out long position, out byte streamId)
+        public MemoryStream Dequeue(out long position, out byte streamId, bool getTail)
         {
             for (byte i = 0; i < _parallelBuffers.Length; i++)
             {
-                var memoryBytes = _parallelBuffers[i].Dequeue(out position);
-                if (memoryBytes != null)
+                if (_parallelBuffers[i].Count > 1 || getTail)
                 {
-                    System.Threading.Interlocked.Decrement(ref _memBuffersCount);
-                    streamId = i;
-                    return memoryBytes;
+                    var memoryBytes = _parallelBuffers[i].Dequeue(out position);
+                    if (memoryBytes != null)
+                    {
+                        System.Threading.Interlocked.Decrement(ref _memBuffersCount);
+                        streamId = i;
+                        return memoryBytes;
+                    }
                 }
             }
             position = 0;
