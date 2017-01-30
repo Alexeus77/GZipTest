@@ -7,10 +7,10 @@ namespace GZipTest.Buffering
 {
     class SeqBuf
     {
-        Queue<long> _positions = new Queue<long>();
+        Queue<uint> _positions = new Queue<uint>();
         Queue<MemoryStream> _buf = new Queue<MemoryStream>();
 
-        public void Write(MemoryStream memBytes, long position)
+        public void Write(MemoryStream memBytes, uint position)
         {
             lock (_buf)
             {
@@ -19,7 +19,7 @@ namespace GZipTest.Buffering
             }
         }
 
-        public MemoryStream Read(out long position)
+        public MemoryStream Read(out uint position)
         {
             lock (_buf)
             {

@@ -9,9 +9,12 @@ namespace GZipTest.Buffering
 
         int _memBuffersCount = 0;
 
-        public int GetMemBuffersCount()
+        public int MemBuffersCount
         {
-            return _memBuffersCount;
+            get
+            {
+                return _memBuffersCount;
+            }
         }
 
 
@@ -31,14 +34,7 @@ namespace GZipTest.Buffering
             System.Threading.Interlocked.Increment(ref _memBuffersCount);
         }
 
-        public MemoryStream Dequeue(byte streamId)
-        {
-            var memoryBytes = _parallelBuffers[streamId].Dequeue();
-            if (memoryBytes != null)
-                System.Threading.Interlocked.Decrement(ref _memBuffersCount);
-            return memoryBytes;
-
-        }
+       
 
         public MemoryStream Dequeue(long position)
         {

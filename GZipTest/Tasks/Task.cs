@@ -41,45 +41,45 @@ namespace GZipTest.Tasks
                 Finished = () => { return FinishedFlag; };
             }
 
+            Thread _thread;
+
+            private Task(Action<T1, T2> action, T1 param1, T2 param2, Thread thread)
+            {
+                Finished = () => { return FinishedFlag; };
+            }
+
             public Task(Action<T1, T2> action, T1 param1, T2 param2) : this()
             {
                 _action = action;
                 _param1 = param1;
                 _param2 = param2;
                 Name = _action.Method.Name;
+                _thread = new Thread(this.DoWork);
+                _thread.IsBackground = true;
+                _thread.Name = Name;
+
             }
 
             public Task(Action<T1, T2> action, T1 param1, T2 param2,
                 Action<T1> continueWith = null) : this(action, param1, param2)
             {
-                _action = action;
-                _param1 = param1;
-                _param2 = param2;
-                Name = _action.Method.Name;
                 ContinueWith = continueWith;
             }
 
             public Task(Action<T1, T2> action, T1 param1, T2 param2,
                 Action<T1, T2> continueWith = null) : this(action, param1, param2)
             {
-                _action = action;
-                _param1 = param1;
-                _param2 = param2;
-                Name = _action.Method.Name;
                 ContinueWith2 = continueWith;
             }
 
             public void Start()
             {
-                Thread thread = new Thread(this.DoWork);
-                thread.IsBackground = true;
-                thread.Name =  Name ?? _action.Method.Name;
-                thread.Start();
+                _thread.Start();
             }
 
             public void StartSync()
             {
-                _action.Invoke(_param1, _param2);
+                DoWork();
             }
 
             private void DoWork()
@@ -100,7 +100,7 @@ namespace GZipTest.Tasks
                 }
                 catch (Exception exception)
                 {
-                    exception.Source = $"{_action.Method.Name}: {exception.Source}. Thread: {Thread.CurrentThread.ManagedThreadId}";
+                    exception.Source = $"{Name}: {exception.Source}. Thread: {Thread.CurrentThread.ManagedThreadId}";
                     this.Exception = exception;
                 }
                 finally

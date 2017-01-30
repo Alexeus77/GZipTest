@@ -13,37 +13,47 @@ namespace GZipTest.Tasks
 
         public ITasker Run<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2);
-            taskQueue.AddFirst(task);
-            task.SignalError = SignalError;
-
-            return this as ITasker;
+            return (this as ITasker).ThenQueueWithContinue(action, param1, param2, null);
         }
 
-        ITasker ITasker.ThenRun<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
+        ITasker ITasker.ThenQueue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            Task<T1, T2> task = new Task<T1, T2>(action, param1, param2);
-            task.SignalError = SignalError;
-
-            var node = taskQueue.AddLast(task);
-            task.PreviousFinished = node.Previous.Value.Finished;
-
-            return this as ITasker;
+            return (this as ITasker).ThenQueueWithContinue(action, param1, param2, null);
         }
 
-        ITasker ITasker.ThenRunWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
+        ITasker ITasker.ThenQueueWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
             Action<T1, T2> continueWith)
         {
             Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
             var node = taskQueue.AddLast(task);
-            task.PreviousFinished = node.Previous.Value.Finished;
+            if(node.Previous != null)
+                task.PreviousFinished = node.Previous?.Value.Finished;
             task.SignalError = SignalError;
 
             return this as ITasker;
         }
 
+        ITasker ITasker.ThenRunWithContinueSync<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2,
+            Action<T1, T2> continueWith)
+        {
+            (this as ITasker).ThenQueueWithContinue(action, param1, param2, continueWith);
 
-        ITasker ITasker.Start()
+            taskQueue.Last.Value.StartSync();
+
+            return this as ITasker;
+        }
+
+        ITasker ITasker.ThenRunSync<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
+        {
+            (this as ITasker).ThenQueueWithContinue(action, param1, param2, null);
+
+            taskQueue.Last.Value.StartSync();
+
+            return this as ITasker;
+        }
+
+
+        ITasker ITasker.StartAsync()
         {
             foreach (ITask task in taskQueue)
                 task.Start();
@@ -95,21 +105,24 @@ namespace GZipTest.Tasks
             }
         }
 
-        public bool SuspendAction()
+        AutoResetEvent suspendBuffer = new AutoResetEvent(false);
+
+
+        public static bool SuspendAction(int sleepMiliSeconds)
         {
             if (!previousFinishedForSuspend())
             {
-                Thread.Sleep(0);
+                Thread.Sleep(sleepMiliSeconds);
                 return true;
             }
 
             return false;
         }
 
-        Func<bool> previousFinishedForSuspend = () => { return true; };
+        static Func<bool> previousFinishedForSuspend = () => { return true; };
 
-        public ITasker ThenRunForEach<T1, T2>(IEnumerable<T1> objects, Action<T1, T2> action1, Action<T1> continueWith, 
-            Func<bool> suspendOuterAction, T2 param2)
+        ITasker ITasker.ThenQueueForEach<T1, T2>(IEnumerable<T1> objects, Action<T1, T2> action1, Action<T1> continueWith, 
+            Func<int, bool> suspendOuterAction, T2 param2)
         {
             Func<bool> previousFinished = () => { return true; };
             if (taskQueue.Count > 0)

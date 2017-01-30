@@ -14,6 +14,7 @@ namespace GZipTest.Compression
         {
             int count;
             int numRead;
+            uint position = 0;
 
             do
             {
@@ -28,8 +29,8 @@ namespace GZipTest.Compression
                     memBytes.SetLength(numRead);
 
                     //save data along with its position to preserve ordering in buffer
-                    toBuffer.WriteSequenceBuf(memBytes, fromStream.Position);
-                    toBuffer.AddSequencePos(fromStream.Position);
+                    toBuffer.WriteSequenceBuf(memBytes, position);
+                    toBuffer.AddSequencePos(position++);
 
                     WriteLine($"R:: {fromStream.Position} {memBytes.Length}");
                 }
@@ -42,7 +43,7 @@ namespace GZipTest.Compression
 
             MemoryStream memBytes;
             //get data from chunked buffer with preserved position
-            long position;
+            uint position;
             while ((memBytes = fromBuffer.ReadSequenceBuf(out position)) != null)
             {
                 //set underlying stream's position to preserve ordering in stream's buffer
@@ -68,32 +69,30 @@ namespace GZipTest.Compression
 
             
             //we need position for correct block ordering
-            long position = fromBuffer.GetSequencePos();
+            long position = fromBuffer.PeekSequencePos();
 
             
 
             //we get blocks in order. we get id of holding stream and store it in output stream
-            while (position != -1 && (memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, false)) != null)
+            while ((memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, false)) != null &&
+                position != -1)
             {
                 WriteLine2($"WC::{streamId} {position} {memBytes.Length} {fromBuffer.CompressedBuffersCount()}");
                 
                 //write block header
-                toStream.WriteHeader(streamId, memBytes.Length);
+                toStream.WriteBlockHeader(streamId, (ushort)memBytes.Length);
 
                 //write compressed block
                 memBytes.WriteTo(toStream);
 
                 //release buffer
                 fromBuffer.ReleaseMem(memBytes);
+                
+                ////stop reading buffer if last block left
+                //if (fromBuffer.AtEndOfSequence())
+                //    return;
 
-                //move to next blocl position
-                fromBuffer.NextSequencePos();
-
-                //stop reading buffer if last block left
-                if (fromBuffer.AtEndOfSequence())
-                    return;
-
-                position = fromBuffer.GetSequencePos();
+                position = fromBuffer.GetNextSequencePos();
             }
 
         }
@@ -105,15 +104,16 @@ namespace GZipTest.Compression
             byte streamId;
 
             //we need position for correct block ordering
-            long position = fromBuffer.GetSequencePos();
+            long position = fromBuffer.PeekSequencePos();
 
             //we get blocks in order. we get id of holding stream and store it in output stream
-            while (position != -1 && (memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, true)) != null)
+            while ((memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, true)) != null &&
+                position != uint.MaxValue)
             {
                 WriteLine($"WC::{streamId} {position} {memBytes.Length}");
                 
                 //write block header
-                toStream.WriteHeader(streamId, memBytes.Length);
+                toStream.WriteBlockHeader(streamId, (ushort)memBytes.Length);
 
                 //write compressed block
                 memBytes.WriteTo(toStream);
@@ -121,9 +121,8 @@ namespace GZipTest.Compression
                 //release buffer
                 fromBuffer.ReleaseMem(memBytes);
 
-                //move to next blocl position
-                fromBuffer.NextSequencePos();
-                position = fromBuffer.GetSequencePos();
+                //move to next block position
+                position = fromBuffer.GetNextSequencePos();
             }
 
         }
@@ -143,12 +142,11 @@ namespace GZipTest.Compression
 
             //read block header
             byte streamId;
-            long length;
-            long position;
+            ushort length;
+        
+            uint position = 0;
 
-            int position2 = 0;
-
-            while (fromStream.ReadHeader(out streamId, out length))
+            while (fromStream.ReadBlockHeader(out streamId, out length))
             {
                 //get free buffer for data
                 MemoryStream memBytes = toBuffer.GetFreeMem();
@@ -158,19 +156,17 @@ namespace GZipTest.Compression
                 int count = (int)length;
 
                 numRead = memBytes.ReadFrom(fromStream, count);
-
                 
-
                 WriteLine($"R::{streamId} {position} {count}");
 
                 //cut length to actual num read
                 memBytes.SetLength(numRead);
-
+                
                 //write to buffer data, position and stream number
-                toBuffer.WriteCompressedBuffer(memBytes, position2, streamId);
+                toBuffer.WriteCompressedBuffer(memBytes, position, streamId);
 
                 //store position for ordering blocks
-                toBuffer.AddSequencePos(position2++);
+                toBuffer.AddSequencePos(position++);
 
             }
         }
@@ -208,7 +204,6 @@ namespace GZipTest.Compression
 
                 WriteLine($"D::{chunkedStream.Id} {position} {numRead}");
                 
-
                 memCurrent = memBytes;
 
                 memBytes = toBuffer.GetFreeMem();
@@ -227,8 +222,10 @@ namespace GZipTest.Compression
         {
             MemoryStream memBytes;
 
-            long position = buffManager.GetSequencePos();
+            //get posiotion in read order
+            long position = buffManager.PeekSequencePos();
 
+            //get the chunk from position needed
             while ((memBytes = buffManager.ReadDecompressedBuffer(position)) != null &&
                 position != -1)
 
@@ -238,8 +235,8 @@ namespace GZipTest.Compression
                 memBytes.WriteTo(toStream);
                 buffManager.ReleaseMem(memBytes);
 
-                buffManager.NextSequencePos();
-                position = buffManager.GetSequencePos();
+                //move to next position
+                position = buffManager.GetNextSequencePos();
             }
 
         }

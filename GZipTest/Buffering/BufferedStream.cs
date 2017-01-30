@@ -76,6 +76,7 @@ namespace GZipTest.Buffering
 
         private MemoryStream _memCurrent = null;
         private bool _restRead = false;
+        private long _positionCurrent = -1;
 
         public Queue<long> ReadPositions { get; set; } = new Queue<long>();
 
@@ -96,8 +97,12 @@ namespace GZipTest.Buffering
 
                 //store read position for proper ordering compressed blocks
 
-                if (!ReadPositions.Contains(position) && !_restRead)
+                if (_positionCurrent != position && !_restRead)
+                {
                     ReadPositions.Enqueue(position);
+
+                    _positionCurrent = position;
+                }
 
                 //min value among: 1)rest buffer 2)bytes count to read 3)rest bytes to read in current do while cycle
                 bytesToRead = (int)
@@ -128,9 +133,7 @@ namespace GZipTest.Buffering
             //return actual count of bytes read by procedure
             return count - bytesToRead;
         }
-
-        private long _positionWritten = 0;
-
+        
         public override void Write(byte[] buffer, int offset, int count)
         {
 
@@ -138,7 +141,7 @@ namespace GZipTest.Buffering
                 return;
 
             //get memstream available for writing from chunked buffer (new or reused)
-            MemoryStream memBytes = _positionWritten == Position && _memCurrent != null ?
+            MemoryStream memBytes = _positionCurrent == Position && _memCurrent != null ?
                 _memCurrent : _chunkedMemBuffer.GetFreeMem();
 
             WriteLine($"ZW::{Id} {Position} {count} {memBytes.Length}");
@@ -148,16 +151,14 @@ namespace GZipTest.Buffering
             memBytes.SetLength(memBytes.Position);
 
             //enqueue memstream to chunked buffer with position ordering and stream number indication
-            if (_positionWritten != Position)
+            if (_positionCurrent != Position)
+            {
                 _chunkedMemBuffer.WriteCompressedBuffer(memBytes, Position, Id);
+                _positionCurrent = Position;
+                _memCurrent = memBytes;
+            }
             else
                 WriteLine2($"ZW::{Id} {Position} {count} {memBytes.Length}");
-
-            _positionWritten = Position;
-            _memCurrent = memBytes;
-
-
-
         }
 
     }

@@ -18,7 +18,7 @@ namespace GZipTest.Tests
             {
                 using (var writeStream = new FileStream(archiveFile, FileMode.CreateNew, FileAccess.Write))
                 {
-                    Compress(readStream, writeStream);
+                     Compress(readStream, writeStream);
                 }
 
             }

@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System;
 
 namespace GZipTest.Streaming
 {
@@ -15,7 +16,7 @@ namespace GZipTest.Streaming
             return numRead;
         }
 
-        public static void WriteHeader(this Stream stream, byte streamId, long blockLength)
+        public static void WriteBlockHeader(this Stream stream, byte streamId, ushort blockLength)
         {
             //write stream number of the block
             stream.WriteByte(streamId);
@@ -25,11 +26,39 @@ namespace GZipTest.Streaming
             //stream.Write(positionBytes, 0, positionBytes.Length);
 
             //write block length
-            var lengthBytes = System.BitConverter.GetBytes((short)blockLength);
-            stream.Write(lengthBytes, 0, lengthBytes.Length);
+            var lengthBytes = BitConverter.GetBytes(blockLength);
+            stream.Write(lengthBytes, 0, sizeof(ushort));
         }
 
-        public static bool ReadHeader(this Stream stream, out byte streamId,  out long blockLength)
+        public static void WriteFileHeader(this Stream stream, byte streamsNumber)
+        {
+            stream.WriteByte(0x1f);
+            stream.WriteByte(0x9b);
+            stream.WriteByte(streamsNumber);
+        }
+
+        public static bool ReadFileHeader(this Stream stream, out byte streamsNumber)
+        {
+            streamsNumber = 0;
+
+            if (stream.Length > 3)
+            {
+                byte gzipMagicNumber = 0;
+                if (stream.ReadByte() == 0x1f)
+                {
+                    gzipMagicNumber = (byte)stream.ReadByte();
+                    if (gzipMagicNumber == 0x9b)
+                        streamsNumber = (byte)stream.ReadByte();
+                    else if (gzipMagicNumber == 0x8b)
+                        streamsNumber = 1;
+                }
+            }
+
+            
+            return streamsNumber > 0;
+        }
+
+        public static bool ReadBlockHeader(this Stream stream, out byte streamId,  out ushort blockLength)
         {
             if (stream.Length - stream.Position > 1 + sizeof(short))
             {
@@ -41,11 +70,11 @@ namespace GZipTest.Streaming
 
                 //var positionBytes = new byte[sizeof(long)];
                 //stream.Read(positionBytes, 0, positionBytes.Length);
-                //blockPosition = System.BitConverter.ToInt64(positionBytes, 0);
+                //blockPosition = BitConverter.ToInt64(positionBytes, 0);
 
-                var lengthBytes = new byte[sizeof(short)];
-                stream.Read(lengthBytes, 0, lengthBytes.Length);
-                blockLength = (long)System.BitConverter.ToInt16(lengthBytes, 0);
+                var lengthBytes = new byte[sizeof(ushort)];
+                stream.Read(lengthBytes, 0, sizeof(ushort));
+                blockLength = BitConverter.ToUInt16(lengthBytes, 0);
 
                 return true;
             }

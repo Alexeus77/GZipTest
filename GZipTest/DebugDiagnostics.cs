@@ -19,6 +19,13 @@ namespace GZipTest
             System.Diagnostics.Debug.WriteLine(message);
         }
 
-        
+
+        [System.Diagnostics.Conditional("DEBUGOUTPUT")]
+        public static void WriteLine3(string message)
+        {
+            System.Diagnostics.Debug.WriteLine(message);
+        }
+
+
     }
 }

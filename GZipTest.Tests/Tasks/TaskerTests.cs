@@ -18,8 +18,8 @@ namespace GZipTest.Tasks.Tests
             {
                 var tasker = new Tasker();
                 tasker.Run(SuspendThread, "", "").
-                    ThenRun(SuspendThread, "", "").
-                    ThenRun(Devide, 1, 0).Start().WaitAll();
+                    ThenQueue(SuspendThread, "", "").
+                    ThenQueueWithContinue(SuspendThread, 1, 0, Devide).StartAsync().WaitAll();
             }
             catch(TaskerAggregateException ex)
             {
@@ -31,6 +31,11 @@ namespace GZipTest.Tasks.Tests
         }
 
         private void SuspendThread(string s1, string s2)
+        {
+            System.Threading.Thread.Sleep(1000);
+        }
+
+        private void SuspendThread(int i1, int i2)
         {
             System.Threading.Thread.Sleep(1000);
         }

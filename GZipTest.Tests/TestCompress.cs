@@ -72,5 +72,47 @@ namespace GZipTest.Tests
                 compressedDataArray[(int)i] = output.ToArray();
             }
         }
+
+        static public void Compress2(Stream inFile, Stream outFile)
+        {
+
+            int _dataPortionSize;
+            Thread[] tPool;
+            Console.Write("Compressing...");
+            while (inFile.Position < inFile.Length)
+            {
+                Console.Write(".");
+                tPool = new Thread[threadNumber];
+                for (int portionCount = 0; (portionCount < threadNumber) && (inFile.Position < inFile.Length); portionCount++)
+                {
+                    if (inFile.Length - inFile.Position <= dataPortionSize)
+                    {
+                        _dataPortionSize = (int)(inFile.Length - inFile.Position);
+                    }
+                    else
+                    {
+                        _dataPortionSize = dataPortionSize;
+                    }
+                    dataArray[portionCount] = new byte[_dataPortionSize];
+                    inFile.Read(dataArray[portionCount], 0, _dataPortionSize);
+
+                    tPool[portionCount] = new Thread(CompressBlock);
+                    tPool[portionCount].Name = $"#{portionCount}";
+                    tPool[portionCount].Start(portionCount);
+                }
+
+                for (int portionCount = 0; (portionCount < threadNumber) && (tPool[portionCount] != null);)
+                {
+                    if (tPool[portionCount].ThreadState == ThreadState.Stopped)
+                    {
+                        outFile.Write(compressedDataArray[portionCount], 0, compressedDataArray[portionCount].Length);
+                        portionCount++;
+                    }
+                }
+            }
+
+            outFile.Close();
+            inFile.Close();
+        }
     }
 }

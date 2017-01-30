@@ -3,13 +3,14 @@ using System.IO.Compression;
 using GZipTest.Buffering;
 using GZipTest.Tasks;
 using static GZipTest.DebugDiagnostics;
+using GZipTest.Streaming;
 
 
 namespace GZipTest.Compression
 {
     public static class Process
     {
-        const int parallelCompressions = 8;
+
 
         public static void Compress(Stream fromStream, Stream toStream)
         {
@@ -24,36 +25,33 @@ namespace GZipTest.Compression
 
         private static void CompressParallel(Stream readStream, Stream writeStream)
         {
-            
+
+            byte parallelCompressions = (byte)System.Environment.ProcessorCount;
+
             var buff = new BuffManager(parallelCompressions);
-            var gZipStreams = GetGZipStreams(buff, parallelCompressions, CompressionMode.Compress);
+            var gZipStreams = GetGZipStreams(buff, CompressionMode.Compress);
 
             Tasker tasker = new Tasker();
 
-            buff.SuspendAction = tasker.SuspendAction;
+            buff.SuspendAction = Tasker.SuspendAction;
+            
+            Streaming.StreamExt.WriteFileHeader(writeStream, parallelCompressions);
 
-            try
-            {
+            tasker.Run(CompressorProcedures.ReadFromStreamToBuffer, readStream, buff).
+                ThenQueueForEach(gZipStreams, CompressorProcedures.CompressBufferDataToStream, CloseGZip, buff.SuspendAction, buff).
 
-                tasker.Run(CompressorProcedures.ReadFromStreamToBuffer, readStream, buff).
-                    ThenRunForEach(gZipStreams, CompressorProcedures.CompressBufferDataToStream, CloseGZip, buff.SuspendAction, buff).
-                    ThenRunWithContinue(CompressorProcedures.WriteCompressedBufferToStream,
-                        writeStream, buff, CompressorProcedures.WriteCompressedBufferTailToStream).
-                Start().WaitAll();
+            StartAsync().
+            ThenRunWithContinueSync(
+                    CompressorProcedures.WriteCompressedBufferToStream,
+                    writeStream, buff,
+                    CompressorProcedures.WriteCompressedBufferTailToStream).
+            WaitAll();
 
-                
-                
-            }
-            catch
-            {
-                WriteLine($"{buff.CompressedBuffersCount()} : {buff.DeCompressedBuffersCount()} : " +
-                    $"{buff.SeqBuffersCount()} : {buff.ReleasedBuffersCount()}");
 
-                throw;
-            }
 
-            WriteLine($"{buff.CompressedBuffersCount()} : {buff.DeCompressedBuffersCount()} : " +
-                    $"{buff.SeqBuffersCount()} : {buff.ReleasedBuffersCount()}");
+
+            //WriteLine($"{buff.CompressedBuffersCount()} : {buff.DeCompressedBuffersCount()} : " +
+            //        $"{buff.SeqBuffersCount()} : {buff.ReleasedBuffersCount()}");
 
         }
 
@@ -64,30 +62,41 @@ namespace GZipTest.Compression
 
         private static void DeCompressParallel(Stream readStream, Stream writeStream)
         {
+            byte streamsNumber;
 
-            var buff = new BuffManager(parallelCompressions);
-            var gZipStreams = GetGZipStreams(buff, parallelCompressions, CompressionMode.Decompress);
+            if (readStream.ReadFileHeader(out streamsNumber))
+            {
 
-            Tasker tasker = new Tasker();
+                var buff = new BuffManager(streamsNumber);
+                var gZipStreams = GetGZipStreams(buff, CompressionMode.Decompress);
 
-            buff.SuspendAction = tasker.SuspendAction;
+                Tasker tasker = new Tasker();
 
-            tasker.Run(CompressorProcedures.ReadFromCompressedStreamToBuffer, readStream, buff).
-                ThenRunForEach(gZipStreams, CompressorProcedures.DecompressFromStreamToBuffer, CloseGZip,
-                buff.SuspendAction, buff).
-                ThenRun(CompressorProcedures.WriteDecompressedToStream, writeStream, buff).
-            Start().WaitAll();
+                buff.SuspendAction = Tasker.SuspendAction;
 
+                tasker.Run(CompressorProcedures.ReadFromCompressedStreamToBuffer, readStream, buff).
+                    ThenQueueForEach(gZipStreams, CompressorProcedures.DecompressFromStreamToBuffer, CloseGZip,
+                    buff.SuspendAction, buff).
 
+                StartAsync().
+                ThenRunWithContinueSync(CompressorProcedures.WriteDecompressedToStream,
+                        writeStream, buff, null).
+                WaitAll();
+
+            }
+            else
+            {
+                throw new InvalidDataException("Input stream is of invalid data format.");
+            }
 
         }
 
-        private static GZipStream[] GetGZipStreams(BuffManager buffManager, int parallelCompressions, CompressionMode compressionMode)
+        private static GZipStream[] GetGZipStreams(BuffManager buffManager, CompressionMode compressionMode)
         {
-            GZipStream[] gzipStreams = new GZipStream[parallelCompressions];
-            Buffering.BufferedStream[] chunkedStreams = new Buffering.BufferedStream[parallelCompressions];
+            GZipStream[] gzipStreams = new GZipStream[buffManager.StreamsNumber];
+            Buffering.BufferedStream[] chunkedStreams = new Buffering.BufferedStream[buffManager.StreamsNumber];
 
-            for (byte i = 0; i < parallelCompressions; i++)
+            for (byte i = 0; i < gzipStreams.Length; i++)
             {
                 chunkedStreams[i] = new Buffering.BufferedStream(i, buffManager);
                 gzipStreams[i] = new GZipStream(chunkedStreams[i], compressionMode, true);
@@ -96,33 +105,48 @@ namespace GZipTest.Compression
             return gzipStreams;
         }
 
-        private static void CompressSeq(Stream readStream, Stream writeStream)
-        {
-            var buff = new BuffManager(2);
-            var chunkedStream = new Buffering.BufferedStream(0, buff);
-            var gzip = new GZipStream(chunkedStream, CompressionMode.Compress);
+        //private static void CompressSeq(Stream readStream, Stream writeStream)
+        //{
+        //    const int parallelCompressions = 2;
 
-            CompressorProcedures.ReadFromStreamToBuffer(readStream, buff);
-            CompressorProcedures.CompressBufferDataToStream(gzip, buff);
-            gzip.Close();
-            CompressorProcedures.WriteCompressedBufferToStream(writeStream, buff);
-            CompressorProcedures.WriteCompressedBufferTailToStream(writeStream, buff);
+        //    var buff = new BuffManager(parallelCompressions);
+        //    var chunkedStream = new Buffering.BufferedStream(0, buff);
+        //    var gzipStreams = GetGZipStreams(buff, CompressionMode.Compress);
 
-        }
+        //    CompressorProcedures.ReadFromStreamToBuffer(readStream, buff);
+        //    foreach (var gzip in gzipStreams)
+        //    {
+        //        CompressorProcedures.CompressBufferDataToStream(gzip, buff);
+        //        gzip.Close();
+        //    }
 
-        private static void DeCompressSeq(Stream readStream, Stream writeStream)
-        {
-            var buff = new BuffManager(2);
-            var chunkedStream = new Buffering.BufferedStream(0, buff);
-            var gzip = new GZipStream(chunkedStream, CompressionMode.Decompress);
+        //    writeStream.WriteFileHeader(parallelCompressions);
 
-            CompressorProcedures.ReadFromCompressedStreamToBuffer(readStream, buff);
-            CompressorProcedures.DecompressFromStreamToBuffer(gzip, buff);
-            gzip.Close();
+        //    CompressorProcedures.WriteCompressedBufferToStream(writeStream, buff);
+        //    CompressorProcedures.WriteCompressedBufferTailToStream(writeStream, buff);
 
-            CompressorProcedures.WriteDecompressedToStream(writeStream, buff);
+        //}
 
-        }
+        //private static void DeCompressSeq(Stream readStream, Stream writeStream)
+        //{
+        //    byte streamsNumber;
+
+        //    if (readStream.ReadFileHeader(out streamsNumber))
+        //    {
+        //        var buff = new BuffManager(streamsNumber);
+        //        var gzipStreams = GetGZipStreams(buff, CompressionMode.Decompress);
+
+        //        CompressorProcedures.ReadFromCompressedStreamToBuffer(readStream, buff);
+        //        foreach (var gzip in gzipStreams)
+        //        {
+        //            CompressorProcedures.DecompressFromStreamToBuffer(gzip, buff);
+        //            gzip.Close();
+        //        }
+
+        //        CompressorProcedures.WriteDecompressedToStream(writeStream, buff);
+        //    }
+
+        //}
 
     }
 

@@ -8,39 +8,44 @@ namespace GZipTest.Buffering
     class BuffManager
     {
         public const int ChunkSize = 1024 * 8;
+        private const int SeqBufferUpLimit = 3000;
+        private const int SeqBufferLowLimit = 500;
 
         SeqBuf _seqBuf = new SeqBuf();
 
         ParallelBufQueue _compressedBuffers;
         ParallelBufQueue _decompressedBuffers;
 
-        Queue<long> _sequencePositions = new Queue<long>();
+        Queue<uint> _sequencePositions = new Queue<uint>();
         Queue<MemoryStream> _releasedBuffer = new Queue<MemoryStream>();
 
 
         public int CompressedBuffersCount()
         {
-            return _compressedBuffers.GetMemBuffersCount();
+            return _compressedBuffers.MemBuffersCount;
          }
 
         public int DeCompressedBuffersCount()
         {
-            return _decompressedBuffers.GetMemBuffersCount();
+            return _decompressedBuffers.MemBuffersCount;
         }
 
         public int SeqBuffersCount() { return _seqBuf.BufCount; }
         
         public int ReleasedBuffersCount() { return _releasedBuffer.Count; }
 
-        public Func<bool> SuspendAction = () => { return false; };
-        
+        public Func<int, bool> SuspendAction = (i) => { return false; };
+        public int StreamsNumber { get; private set; }
+
+
         public BuffManager(int streamsNumber)
         {
             _compressedBuffers = new ParallelBufQueue(streamsNumber);
             _decompressedBuffers = new ParallelBufQueue(streamsNumber);
+            StreamsNumber = streamsNumber;
         }
 
-        public void AddSequencePos(long position)
+        public void AddSequencePos(uint position)
         {
             lock (_sequencePositions)
             {
@@ -48,7 +53,7 @@ namespace GZipTest.Buffering
             }
         }
 
-        public long GetSequencePos()
+        public uint PeekSequencePos()
         {
             lock (_sequencePositions)
             {
@@ -56,7 +61,7 @@ namespace GZipTest.Buffering
                     return _sequencePositions.Peek();
             }
 
-            return -1;
+            return UInt32.MaxValue;
         }
 
         public bool AtEndOfSequence()
@@ -67,28 +72,31 @@ namespace GZipTest.Buffering
             }
         }
 
-        public void NextSequencePos()
+        public uint GetNextSequencePos()
         {
             lock (_sequencePositions)
             {
-                if (_sequencePositions.Count > 0)
+                if (_sequencePositions.Count > 1)
+                {
                     _sequencePositions.Dequeue();
+                    return _sequencePositions.Peek();
+                }
             }
+
+            return UInt32.MaxValue;
         }
 
-        public void WriteSequenceBuf(MemoryStream memBytes, long position)
+        
+        public void WriteSequenceBuf(MemoryStream memBytes, uint position)
         {
             _seqBuf.Write(memBytes, position);
 
-            if (_seqBuf.BufCount > 1000)
-            {
-                WriteLine($"{DateTime.Now}:{_seqBuf.BufCount}");
-                SuspendAction();
-            }
-
+            if (_seqBuf.BufCount > SeqBufferUpLimit)
+                SuspendAction(SeqBufferUpLimit / 10);
+            
         }
 
-        public MemoryStream ReadSequenceBuf(out long position)
+        public MemoryStream ReadSequenceBuf(out uint position)
         {
             return _seqBuf.Read(out position);
         }
@@ -112,12 +120,9 @@ namespace GZipTest.Buffering
         {
             return _compressedBuffers.Dequeue(position, out streamId, getTail);
         }
-        public MemoryStream ReadCompressedBuffer(out long position, out byte streamId, bool getTail)
-        {
-            return _compressedBuffers.Dequeue(out position, out streamId, getTail);
-        }
 
 
+        
         public MemoryStream ReadCompressedBufferForStream(out long position, byte streamId)
         {
             return ReadParallelBufferForStream(_compressedBuffers, out position, streamId);
@@ -138,7 +143,7 @@ namespace GZipTest.Buffering
                 memBytes = buffers.Dequeue(out position, streamId);
             }
             while (memBytes == null &&
-                SuspendAction()); //suspend if buffer is empty
+                SuspendAction(0)); //suspend if buffer is empty
 
             return memBytes;
         }
