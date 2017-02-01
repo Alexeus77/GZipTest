@@ -86,7 +86,7 @@ namespace GZipTest
 
             sw.Start();
 
-            using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
                 using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
                 {
