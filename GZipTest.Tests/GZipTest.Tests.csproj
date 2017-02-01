@@ -56,7 +56,6 @@
     <Compile Include="ExecutionTests.cs" />
     <Compile Include="Tasks\TaskerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TestCompress.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\Alice_in_Wonderland.pdf.gz" />

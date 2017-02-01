@@ -50,10 +50,6 @@ namespace GZipTest.Compression
             ConsoleWriteLine($"Used streams number: {parallelCompressions}");
             ConsoleWriteLine($"Used buffers: {buff.ReleasedBuffersCount()}");
 
-
-            //WriteLine($"{buff.CompressedBuffersCount()} : {buff.DeCompressedBuffersCount()} : " +
-            //        $"{buff.SeqBuffersCount()} : {buff.ReleasedBuffersCount()}");
-
         }
 
         private static void CloseGZip(GZipStream gzip)
@@ -110,49 +106,7 @@ namespace GZipTest.Compression
 
             return gzipStreams;
         }
-
-        //private static void CompressSeq(Stream readStream, Stream writeStream)
-        //{
-        //    const int parallelCompressions = 2;
-
-        //    var buff = new BuffManager(parallelCompressions);
-        //    var chunkedStream = new Buffering.BufferedStream(0, buff);
-        //    var gzipStreams = GetGZipStreams(buff, CompressionMode.Compress);
-
-        //    CompressorProcedures.ReadFromStreamToBuffer(readStream, buff);
-        //    foreach (var gzip in gzipStreams)
-        //    {
-        //        CompressorProcedures.CompressBufferDataToStream(gzip, buff);
-        //        gzip.Close();
-        //    }
-
-        //    writeStream.WriteFileHeader(parallelCompressions);
-
-        //    CompressorProcedures.WriteCompressedBufferToStream(writeStream, buff);
-        //    CompressorProcedures.WriteCompressedBufferTailToStream(writeStream, buff);
-
-        //}
-
-        //private static void DeCompressSeq(Stream readStream, Stream writeStream)
-        //{
-        //    byte streamsNumber;
-
-        //    if (readStream.ReadFileHeader(out streamsNumber))
-        //    {
-        //        var buff = new BuffManager(streamsNumber);
-        //        var gzipStreams = GetGZipStreams(buff, CompressionMode.Decompress);
-
-        //        CompressorProcedures.ReadFromCompressedStreamToBuffer(readStream, buff);
-        //        foreach (var gzip in gzipStreams)
-        //        {
-        //            CompressorProcedures.DecompressFromStreamToBuffer(gzip, buff);
-        //            gzip.Close();
-        //        }
-
-        //        CompressorProcedures.WriteDecompressedToStream(writeStream, buff);
-        //    }
-
-        //}
+        
 
     }
 
