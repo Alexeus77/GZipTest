@@ -9,7 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{4B7A882C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GZipTest.Tests", "GZipTest.Tests\GZipTest.Tests.csproj", "{86403AC7-C512-451F-8788-C8BE60294DAC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GZipTest.Console", "GZipTest.Console\GZipTest.Console.csproj", "{E8D705F2-7A1C-4198-96B6-4A10DB40FAD5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GZipTest.PConsole", "GZipTest.Console\GZipTest.PConsole.csproj", "{E8D705F2-7A1C-4198-96B6-4A10DB40FAD5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
