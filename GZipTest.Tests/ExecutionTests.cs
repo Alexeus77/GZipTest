@@ -40,7 +40,7 @@ namespace GZipTest.Tests
             exec.Main(paramsCompressModeWithoutFile);
         }
 
-        [TestMethod()]
+       
         [ExpectedException(typeof(ArgumentException))]
         public void Expect_ArgumentException_TargetFileNotSpecifiedTest()
         {

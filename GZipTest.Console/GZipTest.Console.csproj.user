@@ -4,6 +4,6 @@
     <StartArguments>compress "C:\Users\achuikov\Documents\visual studio 2015\Projects\GZipTest\GZipTest.Console\bin\Release\GZipTest.Library.pdb"</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>"C:\Users\achuikov\Documents\visual studio 2015\Projects\GZipTest\GZipTest.Console\bin\Release\GZipTest.Library.pdb" compress</StartArguments>
+    <StartArguments>decompress C:\temp\WindowsUpdate.gz2</StartArguments>
   </PropertyGroup>
 </Project>

@@ -26,7 +26,7 @@ namespace GZipTest.Compression
         private static void CompressParallel(Stream readStream, Stream writeStream)
         {
 
-            byte parallelCompressions = (byte)System.Environment.ProcessorCount;
+            byte parallelCompressions = (byte)(System.Environment.ProcessorCount);
 
             var buff = new BuffManager(parallelCompressions);
             var gZipStreams = GetGZipStreams(buff, CompressionMode.Compress);
@@ -47,7 +47,8 @@ namespace GZipTest.Compression
                     CompressorProcedures.WriteCompressedBufferTailToStream).
             WaitAll();
 
-
+            ConsoleWriteLine($"Used streams number: {parallelCompressions}");
+            ConsoleWriteLine($"Used buffers: {buff.ReleasedBuffersCount()}");
 
 
             //WriteLine($"{buff.CompressedBuffersCount()} : {buff.DeCompressedBuffersCount()} : " +
@@ -82,6 +83,10 @@ namespace GZipTest.Compression
                 ThenRunWithContinueSync(CompressorProcedures.WriteDecompressedToStream,
                         writeStream, buff, null).
                 WaitAll();
+
+                ConsoleWriteLine($"Used streams number: {streamsNumber}");
+                ConsoleWriteLine($"Used buffers: {buff.ReleasedBuffersCount()}");
+
 
             }
             else

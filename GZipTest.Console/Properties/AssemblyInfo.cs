@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("GZipTest")]
-[assembly: AssemblyCopyright("Copyright © Aleksei Chuikov 2016")]
+[assembly: AssemblyCopyright("Copyright © Aleksei Chuikov 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

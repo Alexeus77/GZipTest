@@ -18,7 +18,7 @@ namespace GZipTest.Tests
     {
 
 
-        [TestMethod()]
+        //[TestMethod()]
         public void CompressDecompressFile()
         {
 

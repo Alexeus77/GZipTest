@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace GZipTest
+﻿namespace GZipTest
 {
     static class DebugDiagnostics
     {
@@ -24,6 +19,12 @@ namespace GZipTest
         public static void WriteLine3(string message)
         {
             System.Diagnostics.Debug.WriteLine(message);
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        public static void ConsoleWriteLine(string message)
+        {
+            System.Console.WriteLine(message);
         }
 
 

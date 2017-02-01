@@ -7,15 +7,22 @@ namespace GZipTest.Buffering
 {
     class BuffManager
     {
+        //chunk size currently cannot be large because compressed chunk length should be ushort size
         public const int ChunkSize = 1024 * 8;
-        private const int SeqBufferUpLimit = 3000;
-        private const int SeqBufferLowLimit = 500;
 
+        //suspend for a while if sequential buffer size is over this limit
+        private const int SeqBufferUpLimit = 3000;
+        
+        //sequential buffer for read data from input stream
         SeqBuf _seqBuf = new SeqBuf();
 
+        //here we store compressed data both then compressing and reading compressed stream
         ParallelBufQueue _compressedBuffers;
+
+        //here we store decompressed data on decompress process only
         ParallelBufQueue _decompressedBuffers;
 
+        //ordering positions
         Queue<uint> _sequencePositions = new Queue<uint>();
         Queue<MemoryStream> _releasedBuffer = new Queue<MemoryStream>();
 
@@ -92,7 +99,7 @@ namespace GZipTest.Buffering
             _seqBuf.Write(memBytes, position);
 
             if (_seqBuf.BufCount > SeqBufferUpLimit)
-                SuspendAction(SeqBufferUpLimit / 10);
+                SuspendAction(100);
             
         }
 
@@ -104,11 +111,17 @@ namespace GZipTest.Buffering
         public void WriteCompressedBuffer(MemoryStream memBytes, long position, byte streamId)
         {
             _compressedBuffers.Enqueue(memBytes, position, streamId);
+
+            if (_compressedBuffers.MemBuffersCount > SeqBufferUpLimit)
+                SuspendAction(1);
         }
 
         public void WriteDecompressedBuffer(MemoryStream memBytes, long position, byte streamId)
         {
             _decompressedBuffers.Enqueue(memBytes, position, streamId);
+
+            if (_decompressedBuffers.MemBuffersCount > SeqBufferUpLimit)
+                SuspendAction(1);
         }
 
         public MemoryStream ReadDecompressedBuffer(long position)
@@ -143,7 +156,8 @@ namespace GZipTest.Buffering
                 memBytes = buffers.Dequeue(out position, streamId);
             }
             while (memBytes == null &&
-                SuspendAction(0)); //suspend if buffer is empty
+                SuspendAction(1)); //suspend if buffer is empty. 
+                                   //we need to wait for data then reading through gzipstream
 
             return memBytes;
         }

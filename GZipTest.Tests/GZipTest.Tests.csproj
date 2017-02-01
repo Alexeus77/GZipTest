@@ -51,7 +51,6 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="Buffering\ChunkBufferedStreamTests.cs" />
     <Compile Include="CompressProcessingTests.cs" />
     <Compile Include="CompressTestHelper.cs" />
     <Compile Include="ExecutionTests.cs" />
