@@ -37,15 +37,15 @@ namespace GZipTest.Compression
             
             Streaming.StreamExt.WriteFileHeader(writeStream, parallelCompressions);
 
-            tasker.Run(CompressorProcedures.ReadFromStreamToBuffer, readStream, buff).
+            tasker.Queue(CompressorProcedures.ReadFromStreamToBuffer, readStream, buff).
                 ThenQueueForEach(gZipStreams, CompressorProcedures.CompressBufferDataToStream, CloseGZip, buff.SuspendAction, buff).
 
-            StartAsync().
-            ThenRunWithContinueSync(
+                StartAsync().
+                ThenRunWithContinueSync(
                     CompressorProcedures.WriteCompressedBufferToStream,
                     writeStream, buff,
                     CompressorProcedures.WriteCompressedBufferTailToStream).
-            WaitAll();
+                WaitAll();
 
             ConsoleWriteLine($"Used streams number: {parallelCompressions}");
             ConsoleWriteLine($"Used buffers: {buff.ReleasedBuffersCount()}");
@@ -75,14 +75,15 @@ namespace GZipTest.Compression
 
                 buff.SuspendAction = Tasker.SuspendAction;
 
-                tasker.Run(CompressorProcedures.ReadFromCompressedStreamToBuffer, readStream, buff).
+                tasker.Queue(CompressorProcedures.ReadFromCompressedStreamToBuffer, readStream, buff).
+                
                     ThenQueueForEach(gZipStreams, CompressorProcedures.DecompressFromStreamToBuffer, CloseGZip,
                     buff.SuspendAction, buff).
 
-                StartAsync().
-                ThenRunWithContinueSync(CompressorProcedures.WriteDecompressedToStream,
+                    StartAsync().
+                    ThenRunWithContinueSync(CompressorProcedures.WriteDecompressedToStream,
                         writeStream, buff, null).
-                WaitAll();
+                    WaitAll();
 
                 ConsoleWriteLine($"Used streams number: {streamsNumber}");
                 ConsoleWriteLine($"Used buffers: {buff.ReleasedBuffersCount()}");

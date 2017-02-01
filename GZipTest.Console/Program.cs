@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
+
 
 namespace GZipTest
 {
@@ -16,11 +16,8 @@ namespace GZipTest
         {
             try
             {
-                Stopwatch sw = new Stopwatch();
-
-                sw.Start();
-                new Runner().Main(args);
-                Console.WriteLine($"Completed in {(decimal)sw.ElapsedMilliseconds / 1000} second(s).");
+               
+                new Runner().Start(args);
             }
             catch (Exceptions.CatchedException ae)
             {

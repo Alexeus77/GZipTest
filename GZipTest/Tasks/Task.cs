@@ -13,7 +13,7 @@ namespace GZipTest.Tasks
             volatile bool _finished;
             object _lockObject = new object();
 
-            public string Name { get; set; }
+            public string Name { get; set; } = null;
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
             public Exception Exception { get; private set; }
             public Action SignalError { get; set; }
@@ -53,11 +53,9 @@ namespace GZipTest.Tasks
                 _action = action;
                 _param1 = param1;
                 _param2 = param2;
-                Name = _action.Method.Name;
+                
                 _thread = new Thread(this.DoWork);
                 _thread.IsBackground = true;
-                _thread.Name = Name;
-
             }
 
             public Task(Action<T1, T2> action, T1 param1, T2 param2,
@@ -74,6 +72,7 @@ namespace GZipTest.Tasks
 
             public void Start()
             {
+                _thread.Name = Name ?? _action.Method.Name;
                 _thread.Start();
             }
 

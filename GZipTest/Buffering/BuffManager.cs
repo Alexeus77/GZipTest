@@ -10,9 +10,14 @@ namespace GZipTest.Buffering
         //chunk size currently cannot be large because compressed chunk length should be ushort size
         public const int ChunkSize = 1024 * 8;
 
-        //suspend for a while if sequential buffer size is over this limit
+        //suspend for a while if buffer size is over this limit
         private const int SeqBufferUpLimit = 3000;
-        
+        private const int ParallelBufferUpLimit = 5000;
+
+        //suspend timing
+        private const int suspendSeqBuffer = 100;
+        private const int suspendParallelBuffer = 10;
+
         //sequential buffer for read data from input stream
         SeqBuf _seqBuf = new SeqBuf();
 
@@ -26,6 +31,8 @@ namespace GZipTest.Buffering
         Queue<uint> _sequencePositions = new Queue<uint>();
         Queue<MemoryStream> _releasedBuffer = new Queue<MemoryStream>();
 
+
+        public bool NeedSuspendBuffers { get; set; } = true;
 
         public int CompressedBuffersCount()
         {
@@ -98,8 +105,8 @@ namespace GZipTest.Buffering
         {
             _seqBuf.Write(memBytes, position);
 
-            if (_seqBuf.BufCount > SeqBufferUpLimit)
-                SuspendAction(100);
+            if (NeedSuspendBuffers && _seqBuf.BufCount > SeqBufferUpLimit)
+                SuspendAction(suspendSeqBuffer);
             
         }
 
@@ -112,16 +119,22 @@ namespace GZipTest.Buffering
         {
             _compressedBuffers.Enqueue(memBytes, position, streamId);
 
-            if (_compressedBuffers.MemBuffersCount > SeqBufferUpLimit)
-                SuspendAction(1);
+            if (NeedSuspendBuffers)
+                SuspendParallelBufferInc(_compressedBuffers);
         }
 
         public void WriteDecompressedBuffer(MemoryStream memBytes, long position, byte streamId)
         {
             _decompressedBuffers.Enqueue(memBytes, position, streamId);
 
-            if (_decompressedBuffers.MemBuffersCount > SeqBufferUpLimit)
-                SuspendAction(1);
+            if (NeedSuspendBuffers)
+                SuspendParallelBufferInc(_decompressedBuffers);
+        }
+
+        private void SuspendParallelBufferInc(ParallelBufQueue buff)
+        {
+            if (buff.MemBuffersCount > ParallelBufferUpLimit)
+                SuspendAction(suspendSeqBuffer);
         }
 
         public MemoryStream ReadDecompressedBuffer(long position)

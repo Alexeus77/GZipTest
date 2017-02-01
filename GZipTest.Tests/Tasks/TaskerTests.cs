@@ -17,7 +17,7 @@ namespace GZipTest.Tasks.Tests
             try
             {
                 var tasker = new Tasker();
-                tasker.Run(SuspendThread, "", "").
+                tasker.Queue(SuspendThread, "", "").
                     ThenQueue(SuspendThread, "", "").
                     ThenQueueWithContinue(SuspendThread, 1, 0, Devide).StartAsync().WaitAll();
             }

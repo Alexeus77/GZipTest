@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;
 
 namespace GZipTest.Tests
 {
@@ -20,40 +19,40 @@ namespace GZipTest.Tests
         static GZipTest.Runner exec;
 
         [ClassInitializeAttribute]
-        public static void ClassInit()
+        public static void ClassInit(TestContext context)
         {
             exec = new Runner();
         }
 
         [TestMethod()]
-        [ExpectedException(typeof(ArgumentException))]
+        [ExpectedException(typeof(Exceptions.CatchedException))]
         public void Expect_ArgumentException_ModeNotSpecifiedTest()
         {
-            exec.Main(paramsWithoutMode);
+            exec.Start(paramsWithoutMode);
         }
 
         [TestMethod()]
-        [ExpectedException(typeof(ArgumentException))]
+        [ExpectedException(typeof(Exceptions.CatchedException))]
         public void Expect_ArgumentException_FileNotSpecifiedTest()
         {
             
-            exec.Main(paramsCompressModeWithoutFile);
+            exec.Start(paramsCompressModeWithoutFile);
         }
 
        
-        [ExpectedException(typeof(ArgumentException))]
+        [ExpectedException(typeof(Exceptions.CatchedException))]
         public void Expect_ArgumentException_TargetFileNotSpecifiedTest()
         {
             
-            exec.Main(paramsDeCompressModeWithoutTargetFile);
+            exec.Start(paramsDeCompressModeWithoutTargetFile);
         }
 
         [TestMethod()]
-        [ExpectedException(typeof(FileNotFoundException))]
+        [ExpectedException(typeof(Exceptions.CatchedException))]
         public void Expect_ArgumentException_SourceFileNotFound()
         {
             
-            exec.Main(paramsDeCompressModeSourceFileNotFound);
+            exec.Start(paramsDeCompressModeSourceFileNotFound);
         }
 
     }

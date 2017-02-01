@@ -11,7 +11,7 @@ namespace GZipTest.Tasks
     {
         LinkedList<ITask> taskQueue = new LinkedList<ITask>();
 
-        public ITasker Run<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
+        public ITasker Queue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
             return (this as ITasker).ThenQueueWithContinue(action, param1, param2, null);
         }
@@ -45,11 +45,7 @@ namespace GZipTest.Tasks
 
         ITasker ITasker.ThenRunSync<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            (this as ITasker).ThenQueueWithContinue(action, param1, param2, null);
-
-            taskQueue.Last.Value.StartSync();
-
-            return this as ITasker;
+            return (this as ITasker).ThenRunWithContinueSync(action, param1, param2, null);
         }
 
 

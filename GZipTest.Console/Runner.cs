@@ -1,15 +1,16 @@
 ﻿using System;
 using System.IO;
 using static GZipTest.Compression.Process;
+using System.Diagnostics;
 
 namespace GZipTest
 {
     
-    public class Runner
+    public class Runner 
     {
         const string archiveExt = ".gz2";
-
-        public void Main(string[] args)
+        
+        public void Start(string[] args)
         {
             try
             {
@@ -79,6 +80,12 @@ namespace GZipTest
                     return;
             }
 
+            Console.WriteLine($"Started processing.\nSource file '{sourceFile}'.\nDestination file '{destFile}'");
+
+            Stopwatch sw = new Stopwatch();
+
+            sw.Start();
+
             using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read))
             {
                 using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
@@ -87,6 +94,8 @@ namespace GZipTest
                 }
 
             }
+
+            Console.WriteLine($"Completed in {(decimal)sw.ElapsedMilliseconds / 1000} second(s).");
         }
     }
 }
