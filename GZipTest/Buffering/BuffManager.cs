@@ -32,7 +32,7 @@ namespace GZipTest.Buffering
         Queue<MemoryStream> _releasedBuffer = new Queue<MemoryStream>();
 
 
-        public bool NeedSuspendBuffers { get; set; } = true;
+        public readonly bool NeedSuspendBuffers = false;
 
         public int CompressedBuffersCount()
         {
