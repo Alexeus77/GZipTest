@@ -37,12 +37,7 @@ namespace GZipTest.Tests
             {
                 for (int i = 0; i < 5; i++)
                 {
-                    //var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
-                    //Skip(0).First();
-
-
-                    Stream resStream;
-                    Stream decompressed = GetDecompressedResource(resName, out resStream);
+                    Stream decompressed = GetDecompressedResource(resName, out _);
                     decompressed.Position = 0;
 
                     Stream compressedToTest = new MemoryStream();
@@ -80,8 +75,8 @@ namespace GZipTest.Tests
             if (stream1.Length != stream2.Length)
                 return false;
 
-            int byte1 = 0;
-            int byte2 = 0;
+            int byte1;
+            int byte2;
 
             stream1.Position = 0;
             stream2.Position = 0;

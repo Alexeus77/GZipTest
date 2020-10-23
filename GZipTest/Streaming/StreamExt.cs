@@ -43,7 +43,7 @@ namespace GZipTest.Streaming
 
             if (stream.Length > 3)
             {
-                byte gzipMagicNumber = 0;
+                byte gzipMagicNumber;
                 if (stream.ReadByte() == 0x1f)
                 {
                     gzipMagicNumber = (byte)stream.ReadByte();

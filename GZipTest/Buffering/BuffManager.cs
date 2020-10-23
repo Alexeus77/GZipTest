@@ -11,13 +11,12 @@ namespace GZipTest.Buffering
         public const int ChunkSize = 1024 * 8;
 
         //suspend for a while if buffer size is over this limit
-        private const int SeqBufferUpLimit = 3000;
-        private const int ParallelBufferUpLimit = 5000;
+        private const int SeqBufferUpLimit = 2000;
+        private const int ParallelBufferUpLimit = 3000;
 
         //suspend timing
         private const int suspendSeqBuffer = 100;
-        private const int suspendParallelBuffer = 10;
-
+        
         //sequential buffer for read data from input stream
         SeqBuf _seqBuf = new SeqBuf();
 
@@ -162,7 +161,7 @@ namespace GZipTest.Buffering
         private MemoryStream ReadParallelBufferForStream(ParallelBufQueue buffers, out long position, byte streamId)
         {
 
-            MemoryStream memBytes = null;
+            MemoryStream memBytes;
 
             do
             {

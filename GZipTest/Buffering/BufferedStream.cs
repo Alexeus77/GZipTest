@@ -9,6 +9,7 @@ namespace GZipTest.Buffering
     class BufferedStream : Stream
     {
         private BuffManager _chunkedMemBuffer;
+        private long dataLength = 0;
 
         public byte Id { get; private set; }
 
@@ -19,7 +20,13 @@ namespace GZipTest.Buffering
         }
 
 
+        public override long Length  => dataLength;
         public override long Position { get; set; }
+
+        public void SetDataLength(long dataLength)
+        {
+            this.dataLength = dataLength;
+        }
 
         public override bool CanWrite
         {
@@ -46,14 +53,7 @@ namespace GZipTest.Buffering
                 throw new NotImplementedException("CanSeek");
             }
         }
-
-        public override long Length
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
+             
 
         public override void Flush()
         {

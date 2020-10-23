@@ -12,12 +12,13 @@ namespace GZipTest
         }
 
 
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             try
             {
                
                 new Runner().Start(args);
+                return 0;
             }
             catch (Exceptions.CatchedException ae)
             {
@@ -27,7 +28,7 @@ namespace GZipTest
             {
                 foreach(var e in taskException.InnerExceptions)
                 {
-                    Console.WriteLine($"Error {e.Message} {e.Source}.");
+                    Console.WriteLine($"Error {e.Message} {e.Source} \n {e.StackTrace}");
                 }
             }
             catch (Exception e)
@@ -39,6 +40,8 @@ namespace GZipTest
 
                 System.Diagnostics.Debug.WriteLine($"{msg} {e.StackTrace}");
             }
+
+            return 1;
         }
 
     }

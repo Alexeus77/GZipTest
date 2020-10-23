@@ -12,6 +12,7 @@ namespace GZipTest.Tasks
             T2 _param2;
             volatile bool _finished;
             object _lockObject = new object();
+            Thread _thread;
 
             public string Name { get; set; } = null;
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
@@ -33,20 +34,34 @@ namespace GZipTest.Tasks
             }
 
 
+            public Func<bool> CanLoop { get; set; } = () => { return true; };
+            public Func<bool> PreviousTaskIsCompleted { get; set; } = () => { return true; };
 
-            public Func<bool> PreviousFinished { get; set; } = () => { return true; };
-            
+            AutoResetEvent actionCompletedEvent = new AutoResetEvent(false);
+
+            public Func<bool> WaitActionCompleted
+            {
+                get
+                {
+                    return () =>
+                    {
+                        actionCompletedEvent.WaitOne();
+                        return true;
+                    };
+                }
+            }
+
+            private void SignalActionCompleted()
+            {
+                actionCompletedEvent.Set();
+            }
+                
+
             private Task()
             {
                 Finished = () => { return FinishedFlag; };
             }
 
-            Thread _thread;
-
-            private Task(Action<T1, T2> action, T1 param1, T2 param2, Thread thread)
-            {
-                Finished = () => { return FinishedFlag; };
-            }
 
             public Task(Action<T1, T2> action, T1 param1, T2 param2) : this()
             {
@@ -89,7 +104,8 @@ namespace GZipTest.Tasks
                     do
                     {
                         _action(_param1, _param2);
-                    } while (!PreviousFinished() && DoSuspend());
+                        SignalActionCompleted();
+                    } while (!PreviousTaskIsCompleted() && CanLoop());
 
                    // _action(_param1, _param2);
 
@@ -116,11 +132,7 @@ namespace GZipTest.Tasks
                 }
             }
 
-            private bool DoSuspend()
-            {
-                Thread.Sleep(100);
-                return true;
-            }
+           
         }
 
         

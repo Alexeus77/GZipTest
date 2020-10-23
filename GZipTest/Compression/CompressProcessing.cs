@@ -4,7 +4,7 @@ using GZipTest.Buffering;
 using GZipTest.Tasks;
 using static GZipTest.DebugDiagnostics;
 using GZipTest.Streaming;
-
+using System;
 
 namespace GZipTest.Compression
 {
@@ -26,7 +26,7 @@ namespace GZipTest.Compression
         private static void CompressParallel(Stream readStream, Stream writeStream)
         {
 
-            byte parallelCompressions = (byte)(System.Environment.ProcessorCount);
+            byte parallelCompressions = (byte)(Math.Max(Environment.ProcessorCount, readStream.Length / 4E9 + 1));
 
             var buff = new BuffManager(parallelCompressions);
             var gZipStreams = GetGZipStreams(buff, CompressionMode.Compress);

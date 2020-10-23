@@ -26,8 +26,11 @@ namespace GZipTest.Tasks
         {
             Task<T1, T2> task = new Task<T1, T2>(action, param1, param2, continueWith);
             var node = taskQueue.AddLast(task);
-            if(node.Previous != null)
-                task.PreviousFinished = node.Previous?.Value.Finished;
+            if (node.Previous != null)
+            {
+                task.PreviousTaskIsCompleted = node.Previous.Value.Finished;
+                task.CanLoop = node.Previous.Value.WaitActionCompleted;
+            }
             task.SignalError = SignalError;
 
             return this as ITasker;
@@ -131,7 +134,7 @@ namespace GZipTest.Tasks
 
             foreach (var obj in objects)
             {
-                Task<T1, T2> task = new Task<T1, T2>(action1, obj, param2, continueWith);
+                var task = new Task<T1, T2>(action1, obj, param2, continueWith);
                 task.Name = $"{action1.Method.Name}#{taskNum++}";
 
                 var node = taskQueue.AddLast(task);
@@ -139,7 +142,7 @@ namespace GZipTest.Tasks
                     task.Finished = 
                         () => 
                         { return task.FinishedFlag && node.Previous.Value.Finished(); };
-                task.PreviousFinished = previousFinished;
+                task.PreviousTaskIsCompleted = previousFinished;
                 task.SignalError = SignalError;
             }
 
