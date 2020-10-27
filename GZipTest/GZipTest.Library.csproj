@@ -15,7 +15,7 @@
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -43,10 +43,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArgumentsParser.cs" />
-    <Compile Include="Buffering\BuffManager.cs" />
+    <Compile Include="Buffering\CompressedBuffer.cs" />
+    <Compile Include="Buffering\DecompressBuffer.cs" />
     <Compile Include="Buffering\ParallelBuf.cs" />
     <Compile Include="Buffering\ParallelBufQueue.cs" />
-    <Compile Include="Buffering\SeqBuf.cs" />
+    <Compile Include="Buffering\ReadBufferedStream.cs" />
     <Compile Include="Compression\CompressorProcedures.cs" />
     <Compile Include="Compression\CompressProcessing.cs" />
     <Compile Include="Buffering\BufferedStream.cs" />

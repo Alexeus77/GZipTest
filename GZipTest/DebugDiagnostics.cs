@@ -5,7 +5,7 @@ namespace GZipTest
 {
     static class DebugDiagnostics
     {
-        [System.Diagnostics.Conditional("DEBUGOUTPUT2")]
+        [Conditional("DEBUGOUTPUT2")]
         public static void WriteLine2(string message)
         {
             Console.WriteLine(message);

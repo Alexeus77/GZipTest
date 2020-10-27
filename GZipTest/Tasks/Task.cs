@@ -7,7 +7,7 @@ namespace GZipTest.Tasks
     {
         private class Task<T1, T2> : ITask
         {
-            Action<T1, T2> _action;
+            Action<T1, T2, Action> _action;
             T1 _param1;
             T2 _param2;
             volatile bool _finished;
@@ -39,19 +39,19 @@ namespace GZipTest.Tasks
 
             AutoResetEvent actionCompletedEvent = new AutoResetEvent(false);
 
-            public Func<bool> WaitActionCompleted
+            public Func<bool> WaitLoopCompleted
             {
                 get
                 {
                     return () =>
                     {
-                        actionCompletedEvent.WaitOne();
+                        actionCompletedEvent.WaitOne(500);
                         return true;
                     };
                 }
             }
 
-            private void SignalActionCompleted()
+            private void SignalLoopCompleted()
             {
                 actionCompletedEvent.Set();
             }
@@ -63,7 +63,7 @@ namespace GZipTest.Tasks
             }
 
 
-            public Task(Action<T1, T2> action, T1 param1, T2 param2) : this()
+            public Task(Action<T1, T2, Action> action, T1 param1, T2 param2) : this()
             {
                 _action = action;
                 _param1 = param1;
@@ -73,13 +73,13 @@ namespace GZipTest.Tasks
                 _thread.IsBackground = true;
             }
 
-            public Task(Action<T1, T2> action, T1 param1, T2 param2,
+            public Task(Action<T1, T2, Action> action, T1 param1, T2 param2,
                 Action<T1> continueWith = null) : this(action, param1, param2)
             {
                 ContinueWith = continueWith;
             }
 
-            public Task(Action<T1, T2> action, T1 param1, T2 param2,
+            public Task(Action<T1, T2, Action> action, T1 param1, T2 param2,
                 Action<T1, T2> continueWith = null) : this(action, param1, param2)
             {
                 ContinueWith2 = continueWith;
@@ -101,13 +101,14 @@ namespace GZipTest.Tasks
                 try
                 {
                     //iterate action while previous action in chain is not completed
-                    do
+                    while(CanLoop())
                     {
-                        _action(_param1, _param2);
-                        SignalActionCompleted();
-                    } while (!PreviousTaskIsCompleted() && CanLoop());
+                        _action(_param1, _param2, SignalLoopCompleted);
+                        if(PreviousTaskIsCompleted())
+                            break;
+                    } 
 
-                   // _action(_param1, _param2);
+                   _action(_param1, _param2, SignalLoopCompleted);
 
                     //invoke additional action if specified
                     ContinueWith?.Invoke(_param1);
@@ -115,7 +116,7 @@ namespace GZipTest.Tasks
                 }
                 catch (Exception exception)
                 {
-                    exception.Source = $"{Name}: {exception.Source}. Thread: {Thread.CurrentThread.ManagedThreadId}";
+                    exception.Source = $"{Name}: {exception.Source}. Thread: {Thread.CurrentThread.Name}";
                     this.Exception = exception;
                 }
                 finally

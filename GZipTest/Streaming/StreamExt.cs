@@ -5,7 +5,20 @@ namespace GZipTest.Streaming
 {
     static class StreamExt
     {
-        
+
+        public static void WriteLong(this Stream stream, long l)
+        {
+            stream.Write(BitConverter.GetBytes(l), 0, sizeof(long));
+        }
+
+        public static long ReadLong(this Stream stream)
+        {
+            var buf = new Byte[sizeof(long)];
+            stream.Read(buf, 0, sizeof(long));
+
+            return BitConverter.ToInt64(buf, 0);
+        }
+
         public static int ReadFrom(this MemoryStream memBytes, Stream stream, int count)
         {
             byte[] bytes = new byte[count];
@@ -15,6 +28,14 @@ namespace GZipTest.Streaming
 
             return numRead;
         }
+
+        public static void WriteTo(this MemoryStream memBytes, Stream stream, long fromOffset, long toOffset)
+        {
+            stream.Seek(toOffset, SeekOrigin.Begin);
+            stream.Write(memBytes.GetBuffer(), (int)fromOffset, (int)(memBytes.Length - fromOffset));
+
+        }
+
 
         public static void WriteBlockHeader(this Stream stream, byte streamId, ushort blockLength)
         {

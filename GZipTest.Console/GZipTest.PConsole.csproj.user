@@ -5,6 +5,6 @@
     </StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>compress c:\Windows\WindowsUpdate.log</StartArguments>
+    <StartArguments>compress c:\Users\admin\testfile.blob</StartArguments>
   </PropertyGroup>
 </Project>

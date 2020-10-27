@@ -54,13 +54,9 @@
     <Compile Include="CompressProcessingTests.cs" />
     <Compile Include="CompressTestHelper.cs" />
     <Compile Include="ExecutionTests.cs" />
+    <Compile Include="StreamExtTests.cs" />
     <Compile Include="Tasks\TaskerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\Alice_in_Wonderland.pdf.gz" />
-    <EmbeddedResource Include="Resources\dadoes.pdf.gz" />
-    <EmbeddedResource Include="Resources\Starter.xml.gz" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GZipTest.Console\GZipTest.PConsole.csproj">
