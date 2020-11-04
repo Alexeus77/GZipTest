@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System;
+using System.IO.Compression;
 
 namespace GZipTest.Streaming
 {
@@ -19,12 +20,12 @@ namespace GZipTest.Streaming
             return BitConverter.ToInt64(buf, 0);
         }
 
-        public static int ReadFrom(this MemoryStream memBytes, Stream stream, int count)
+        public static int ReadFrom(this Stream toStream, Stream fromStream, int count)
         {
             byte[] bytes = new byte[count];
 
-            var numRead = stream.Read(bytes, 0, count);
-            memBytes.Write(bytes, 0, numRead);
+            var numRead = fromStream.Read(bytes, 0, count);
+            toStream.Write(bytes, 0, numRead);
 
             return numRead;
         }
@@ -34,6 +35,36 @@ namespace GZipTest.Streaming
             stream.Seek(toOffset, SeekOrigin.Begin);
             stream.Write(memBytes.GetBuffer(), (int)fromOffset, (int)(memBytes.Length - fromOffset));
 
+        }
+
+        public static MemoryStream Compress(this MemoryStream memoryStream, MemoryStream toStream)
+        {
+            using (var gz = new GZipStream(toStream, CompressionMode.Compress, true))
+            {
+                memoryStream.WriteTo(gz);
+                gz.Close();
+            }
+
+            return toStream;
+        }
+
+        public static MemoryStream DeCompress(this MemoryStream memoryStream, MemoryStream toStream)
+        {
+
+            toStream.SetLength(0);
+
+            using (var gzStream = new GZipStream(memoryStream, CompressionMode.Decompress, true))
+            {
+                memoryStream.Position = 0;
+
+                while (toStream.ReadFrom(gzStream, (int)memoryStream.Length) > 0)
+                {
+                }
+
+                gzStream.Close();
+            }
+
+            return toStream;
         }
 
 

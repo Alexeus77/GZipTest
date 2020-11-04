@@ -20,7 +20,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>..\GZipTest.Console\lib\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;DEBUGOUTPUT2</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;DEBUGOUTPUT</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
@@ -43,17 +43,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArgumentsParser.cs" />
-    <Compile Include="Buffering\CompressedBuffer.cs" />
-    <Compile Include="Buffering\DecompressBuffer.cs" />
-    <Compile Include="Buffering\ParallelBuf.cs" />
-    <Compile Include="Buffering\ParallelBufQueue.cs" />
-    <Compile Include="Buffering\ReadBufferedStream.cs" />
     <Compile Include="Compression\CompressorProcedures.cs" />
     <Compile Include="Compression\CompressProcessing.cs" />
-    <Compile Include="Buffering\BufferedStream.cs" />
+    <Compile Include="Buffering\Buffers.cs" />
     <Compile Include="DebugDiagnostics.cs" />
     <Compile Include="Exceptions\CatchedException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="Streaming\StreamExt.cs" />
     <Compile Include="Tasks\ITask.cs" />
     <Compile Include="Tasks\ITasker.cs" />

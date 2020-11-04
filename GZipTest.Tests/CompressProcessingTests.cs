@@ -1,16 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using GZipTest;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using System.Reflection;
-using static GZipTest.Compression.Process;
 using static GZipTest.Tests.CompressTestHelper;
-using System.IO.Compression;
 using GZipTest.Streaming;
 using GZipTest.Buffering;
+using GZipTest.Compression;
+using GZipTest.Tests.TestStreams;
 
 namespace GZipTest.Tests
 {
@@ -18,100 +13,219 @@ namespace GZipTest.Tests
     public class CompressProcessingTests
     {
 
-        [TestMethod]
-        public void CompressDecompressLinear()
+        [TestInitialize]
+        public void Init()
         {
-            var randomStream = CompressTestHelper.RandomStream(1024*1024*3);
+            Settings.CompressorsCount = 2;
+        }
+
+        [TestMethod]
+        public void Compress_EndlessStream()
+        {
+            var endless = new EndlessStream((long)(Settings.BufferSize * 1E2));
+            var voidStream = new VoidStream();
+
+            Process.Compress(endless, voidStream);
+        }
+
+        [TestMethod]
+        public void Compress_EndlessStreamToFile()
+        {
+            var destFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2";
+
+            File.Delete(destFile);
+
+            var endlessStream = new EndlessStream((long)(1E12));
+
+            using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
+            {
+                Process.Compress(endlessStream, writeStream);
+            }
+
+        }
+
+        [TestMethod]
+        public void Linear()
+        {
+
+            var randomStream = RandomStream(Settings.BufferSize * 25);
 
             randomStream.Position = 0;
-
             var toStream = new MemoryStream();
 
-            var readBuffer = new ReadBufferedStream();
-            var compressBuffer = new ReadBufferedStream();
+            var readBuffer = new Buffers(Settings.BufferSize);
+            var compressBuffer = new Buffers(Settings.BufferSize);
 
-            Compression.CompressorProcedures.ReadFromStreamToBuffer(randomStream, readBuffer, ()=> { });
-            Compression.CompressorProcedures.CompressBufferDataToStream(compressBuffer, readBuffer, () => { });
-            Compression.CompressorProcedures.WriteCompressedBufferToStream(toStream, new ReadBufferedStream[] { compressBuffer }, () => { });
+            void emptyAction() { }
+
+            readBuffer.ReadFromStream(randomStream, emptyAction);
+            readBuffer.Compress(compressBuffer, emptyAction);
+            toStream.WriteFromCompressedBuffers(new Buffers[] { compressBuffer }, emptyAction);
+
 
             toStream.Position = 0;
 
-            var toStream2 = new MemoryStream();
-            var readBuffer2 = new ReadBufferedStream();
-            var compressBuffer2 = new ReadBufferedStream();
+            var decompressedStream = new MemoryStream();
+            var readCompressedBuffer = new Buffers(Settings.BufferSize);
+            var decompressedBuffer = new Buffers(Settings.BufferSize);
 
-            Compression.CompressorProcedures.ReadFromCompressedStreamToBuffer(toStream, readBuffer2, () => { });
-            Compression.CompressorProcedures.DecompressFromStreamToBuffer(compressBuffer2, readBuffer2, () => { });
-            Compression.CompressorProcedures.WriteDecompressedToStream(toStream2, new ReadBufferedStream[] { compressBuffer2 }, () => { });
+            readCompressedBuffer.ReadFromCompressedStream(toStream, emptyAction);
+            readCompressedBuffer.Decompress(decompressedBuffer, emptyAction);
+            decompressedStream.WriteFromDecompressedBuffers(new Buffers[] { decompressedBuffer }, emptyAction);
 
-            Assert.IsTrue(CompareBytes(randomStream.ToArray(), toStream2.ToArray()));
+            Assert.IsTrue(CompareBytes(randomStream.ToArray(), decompressedStream.ToArray()));
 
         }
 
         [TestMethod]
-        public void Compress()
+        public void ReadFromStreamToBuffer_CheckCounters()
         {
-            var randomStream = CompressTestHelper.RandomStream(1024 * 1024 * 2);
-            
-            var toStream = new MemoryStream();
 
-            Compression.Process.Compress(randomStream, toStream);
+            //arrange
+            const int bufAmp = 3;
 
-            toStream.Position = 0;
+            const int expectedBufCount = 4;
+            const int expectedReleasedCount = 0;
+            const int expectedCycles = 4;
 
-            var toStream2 = new MemoryStream();
-            
-            Compression.Process.Decompress(toStream, toStream2);
+            var stream = new MemoryStream(new byte[Settings.BufferSize * bufAmp]);
+            var buffStream = new Buffers(Settings.BufferSize);
 
-            Assert.IsTrue(CompareBytes(randomStream.ToArray(), toStream2.ToArray()));
+            int cycles = 0;
+            void cyclesAction() { cycles++; }
 
-            //Assert.IsTrue(toStream.Length > toStream2.Length && toStream.Length < (toStream2.Length + 1024 * 1024));
+            var checkStream = new MemoryStream();
+
+            //act
+            buffStream.ReadFromStream(stream, cyclesAction);
+
+            //assert
+            Assert.AreEqual(expectedBufCount, buffStream.BuffersCount, "Buffer count");
+            Assert.AreEqual(expectedReleasedCount, buffStream.ReleasedCount, "Released count");
+            Assert.AreEqual(expectedCycles, cycles);
         }
 
         [TestMethod]
-        public void Compress2()
+        public void CompressBufferDataToStream_CheckCounters()
         {
-            var randomStream = CompressTestHelper.RandomStream(1024 * 1024 * 3);
+            //arrange
+            const int bufAmp = 3;
 
-            var toStream = new MemoryStream();
+            var buffStream = new Buffers(Settings.BufferSize);
+            var buffStreamCompressed = new Buffers(Settings.BufferSize);
 
-            using (var gz = new GZipStream(toStream, CompressionMode.Compress, true))
+            int cycles = 0;
+            void emptyAction() { }
+            void signalAction() { cycles++; }
+
+            var randomStream = RandomStream(Settings.BufferSize * bufAmp);
+            buffStream.ReadFromStream(randomStream, emptyAction);
+
+            var compressedStream = new MemoryStream();
+
+            //act
+            buffStream.Compress(buffStreamCompressed, signalAction);
+
+
+            //assert
+
+            Assert.AreEqual(4, buffStreamCompressed.BuffersCount);
+            Assert.AreEqual(4, buffStream.ReleasedCount);
+        }
+        [TestMethod]
+        public void Compress_ThenDecompress_CheckEqual()
+        {
+            MemoryStream randomStream = RandomStream(Settings.BufferSize * 5);
+
+            var compressedStream = new MemoryStream();
+            randomStream.Position = 0;
+
+            Process.Compress(randomStream, compressedStream);
+
+            var decompressedStream = new MemoryStream();
+
+            compressedStream.Position = 0;
+
+            decompressedStream.DecompressLinear(compressedStream);
+
+            Assert.IsTrue(randomStream.CompareBytes(decompressedStream));
+
+            //CompareBytes(randomStream.ToArray(), decompressedStream.ToArray());
+        }
+
+        [TestMethod]
+        public void MyTestMethod2()
+        {
+            for (int i = 0; i < 10; i++)
             {
-                randomStream.WriteTo(gz);
-                gz.Close();
+                Compress_ThenDecompressLinear_CheckEqual();
             }
+        }
 
+        [TestMethod]
+        public void Compress_ThenDecompressLinear_CheckEqual()
+        {
+            var randomStream = RandomStream(Settings.BufferSize * 125);
+
+            var compressedStream = new MemoryStream();
+            randomStream.Position = 0;
+
+            Process.Compress(randomStream, compressedStream);
+
+            var decompressedStream = new MemoryStream();
             
+            compressedStream.Position = 0;
 
-            var decompress = new MemoryStream(toStream.ToArray());
+            decompressedStream.DecompressLinear(compressedStream);
             
-            var toStream2 = new MemoryStream();
-            int numRead;
+            Assert.IsTrue(randomStream.CompareBytes(decompressedStream));
 
-            using (var gz = new GZipStream(decompress, CompressionMode.Decompress))
+            //CompareBytes(randomStream.ToArray(), decompressedStream.ToArray());
+        }
+
+        [TestMethod]
+        public void Decompress_СompressedLinear_CheckEqual()
+        {
+            var randomStream = RandomStream(Settings.BufferSize *25);
+
+            randomStream.Position = 0;
+            var compressed = new MemoryStream();
+
+            var readBuffer = new Buffers(Settings.BufferSize, 1);
+            var compressBuffer = new Buffers(Settings.BufferSize, 1);
+
+            void emptyAction() { }
+
+            readBuffer.ReadFromStream(randomStream, emptyAction);
+            readBuffer.Compress(compressBuffer, emptyAction);
+            compressed.WriteFromCompressedBuffers(new Buffers[] { compressBuffer }, emptyAction);
+
+            compressed.Position = 0;
+
+            var decompressed = new MemoryStream();
+
+            Process.Decompress(compressed, decompressed);
+                        
+            Assert.IsTrue(CompareBytes(randomStream.ToArray(), decompressed.ToArray()));
+        }
+
+        [TestMethod]
+        public void DecompressLinear()
+        {
+            var sourceFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2";
+            var destFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2.copy";
+
+            File.Delete(destFile);
+
+            using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                while ((numRead = toStream2.ReadFrom(gz, 1024)) > 0)
+                using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
                 {
+                    writeStream.DecompressLinear(readStream);
                 }
 
-                gz.Close();
             }
-
-            Assert.IsTrue(CompareBytes(randomStream.ToArray(), toStream2.ToArray()));
         }
 
-        private static bool CompareBytes(byte[] byte1, byte[] byte2)
-        {
-            if (byte1.Length != byte2.Length)
-                return false;
-
-            for (int i = 0; i < byte1.Length; i++)
-            {
-                if (byte1[i] != byte2[i])
-                    return false;
-            }
-
-            return true;
-        }
     }
 }

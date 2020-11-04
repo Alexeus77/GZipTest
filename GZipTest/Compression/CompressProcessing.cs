@@ -6,69 +6,105 @@ using static GZipTest.DebugDiagnostics;
 using GZipTest.Streaming;
 using System;
 using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace GZipTest.Compression
 {
     public static class Process
     {
-
+        delegate void compressingAction(Stream readStream, Stream writeStream,
+            int bufferSize, int compressionThreadsNumber,
+            int maxBuffersToUse);
 
         public static void Compress(Stream fromStream, Stream toStream)
         {
-            CompressParallel(fromStream, toStream);
+            CompressDeCompress(CompressParallel, fromStream, toStream);
         }
 
         public static void Decompress(Stream fromStream, Stream toStream)
         {
-            DeCompressParallel(fromStream, toStream);
+            CompressDeCompress(DeCompressParallel, fromStream, toStream);
         }
 
+        private static void CompressDeCompress(compressingAction action, Stream readStream, Stream writeStream)
+        {
+            action(readStream, writeStream, Settings.BufferSize, Settings.CompressorsCount, Settings.MaxBuffers);
+        }
 
-        private static void CompressParallel(Stream readStream, Stream writeStream)
+        //private static void CompressParallel2(Stream readStream, Stream writeStream,
+        //    int bufferSize, int compressionThreadsNumber,
+        //    int maxBuffersToUse)
+        //{
+
+        //    CompressAction(readStream, writeStream, 
+        //        Settings.BufferSize, Settings.CompressorsCount, Settings.MaxBuffers,
+        //        CompressorProcedures.ReadFromStream,
+        //        CompressorProcedures.Compress,
+        //        CompressorProcedures.ReadFromBuffers
+        //        );
+        //}
+
+        //private static void CompressAction(Stream readStream, Stream writeStream,
+        //   int bufferSize, int compressionThreadsNumber,
+        //   int maxBuffersToUse,
+        //   Action<Stream, Action> readAction,
+        //   Action<Buffers, Action> compressDecompressAction,
+        //   Action<Buffers[], Action> writeAction)
+        //{
+
+        //    var bufStreams = Enumerable.Range(1, compressionThreadsNumber).
+        //        Select(i => new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse)).ToArray();
+
+        //    ITasker tasker = new Tasker();
+
+        //    var readBuffer = new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse);
+
+        //    tasker.Queue(readAction, readStream).
+        //        ThenQueueForEach(compressDecompressAction, bufStreams).
+        //        Queue(writeAction, bufStreams).
+        //        StartAsync().
+        //        WaitAll();
+        //}
+
+        private static void CompressParallel(Stream readStream, Stream writeStream, 
+            int bufferSize, int compressionThreadsNumber,
+            int maxBuffersToUse)
         {
 
-            byte parallelCompressions = 4; // (byte)(Math.Max(Environment.ProcessorCount, readStream.Length / 4E9 + 1));
-
-            var bufStreams = Enumerable.Range(1, parallelCompressions).
-                Select(i => new Buffering.ReadBufferedStream()).ToArray();
+            var bufStreams = Enumerable.Range(1, compressionThreadsNumber).
+                Select(i => new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse)).ToArray();
 
             ITasker tasker = new Tasker();
             
-            var readBufStream = new ReadBufferedStream();
+            var readBuffer = new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse);
 
-            //var gzs = new GZipStream[] { new GZipStream(bufStreams[0], CompressionMode.Compress) };
-
-            tasker.Queue(CompressorProcedures.ReadFromStreamToBuffer, readStream, readBufStream).
-                ThenQueueForEach(CompressorProcedures.CompressBufferDataToStream, bufStreams, readBufStream, null).
-                Queue(CompressorProcedures.WriteCompressedBufferToStream, writeStream, bufStreams).
+            tasker.Queue(readBuffer.ReadFromStream, readStream).
+                ThenQueueForEach(readBuffer.Compress, bufStreams).
                 StartAsync().
+                ThenRunSync(writeStream.WriteFromCompressedBuffers, bufStreams).
                 WaitAll();
-
-            ConsoleWriteLine($"Used streams number: {parallelCompressions}");
-            
         }
                 
 
-        private static void DeCompressParallel(Stream readStream, Stream writeStream)
+        private static void DeCompressParallel(Stream readStream, Stream writeStream, 
+            int bufferSize, int compressionThreadsNumber, int maxBuffersToUse)
         {
-            byte parallelCompressions = 1; // (byte)(Math.Max(Environment.ProcessorCount, readStream.Length / 4E9 + 1));
 
-            var bufStreams = Enumerable.Range(1, parallelCompressions).
-                Select(i => new Buffering.ReadBufferedStream()).ToArray();
+            var bufStreams = Enumerable.Range(1, compressionThreadsNumber).
+                Select(i => new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse)).ToArray();
 
             ITasker tasker = new Tasker();
 
-            var readBufStream = new ReadBufferedStream();
+            var readBufStream = new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse);
 
-            tasker.Queue(CompressorProcedures.ReadFromCompressedStreamToBuffer, readStream, readBufStream).
-               ThenQueueForEach(CompressorProcedures.DecompressFromStreamToBuffer, bufStreams, readBufStream, null).
-               Queue(CompressorProcedures.WriteDecompressedToStream, writeStream, bufStreams).
+            tasker.Queue(readBufStream.ReadFromCompressedStream, readStream).
+               ThenQueueForEach(readBufStream.Decompress, bufStreams).
                StartAsync().
+               ThenRunSync(writeStream.WriteFromDecompressedBuffers, bufStreams).
                WaitAll();
 
         }
-
-
     }
 
 }

@@ -9,10 +9,8 @@ namespace GZipTest.Tasks
         ITasker StartAsync();
         void StartSequential();
         void WaitAll();
-        ITasker ThenQueueForEach<T1, T2>(Action<T1, T2, Action> action1, IEnumerable<T1> objects, T2 param2, Action<T1> continueWith);
-        ITasker Queue<T1, T2>(Action<T1, T2, Action> action, T1 param1, T2 param2);
-        //ITasker ThenRunWithContinueSync<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2, Action<T1, T2> continueWith);
-        //ITasker ThenQueueWithContinue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2, Action<T1, T2> continueWith);
-        //ITasker ThenRunSync<T1, T2>(Action<T1, T2, Action> action, T1 param1, T2 param2);
+        ITasker ThenQueueForEach<T>(Action<T, Action> action, IEnumerable<T> objects);
+        ITasker Queue<T>(Action<T, Action> action, T param1);
+        ITasker ThenRunSync<T>(Action<T, Action> action, T param);
     }
 }

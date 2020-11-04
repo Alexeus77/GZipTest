@@ -37,5 +37,21 @@ namespace GZipTest.Tests
 
             Assert.IsTrue(checkValue == 0);
         }
+
+        [TestMethod]
+        public void Compress_ReuseOutputStream_SameResult()
+        {
+            
+            var randomStream = CompressTestHelper.RandomStream(100);
+            var compressed = randomStream.Compress(new MemoryStream());
+            var compressedTest = new MemoryStream();
+
+            for (int i = 0; i < 100; i++)
+            {
+                compressedTest = randomStream.Compress(compressedTest);
+
+                compressedTest.CompareBytes(compressed);
+            }
+        }
     }
 }

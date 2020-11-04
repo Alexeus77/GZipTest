@@ -5,21 +5,21 @@ namespace GZipTest.Tasks
 {
     public partial class Tasker
     {
-        private class Task<T1, T2> : ITask
+        private class Task<T> : ITask
         {
-            Action<T1, T2, Action> _action;
-            T1 _param1;
-            T2 _param2;
+            
+            private readonly Action<T, Action> _action;
+            private readonly T _param;
+
             volatile bool _finished;
-            object _lockObject = new object();
-            Thread _thread;
+            private readonly object _lockObject = new object();
+            private readonly Thread _thread;
+            private readonly AutoResetEvent actionCompletedEvent = new AutoResetEvent(false);
 
             public string Name { get; set; } = null;
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
             public Exception Exception { get; private set; }
             public Action SignalError { get; set; }
-            private Action<T1> ContinueWith { get; set; }
-            private Action<T1, T2> ContinueWith2 { get; set; }
             public Func<bool> Finished { get; set; }
             public bool FinishedFlag
             {
@@ -37,7 +37,7 @@ namespace GZipTest.Tasks
             public Func<bool> CanLoop { get; set; } = () => { return true; };
             public Func<bool> PreviousTaskIsCompleted { get; set; } = () => { return true; };
 
-            AutoResetEvent actionCompletedEvent = new AutoResetEvent(false);
+            
 
             public Func<bool> WaitLoopCompleted
             {
@@ -62,27 +62,15 @@ namespace GZipTest.Tasks
                 Finished = () => { return FinishedFlag; };
             }
 
-
-            public Task(Action<T1, T2, Action> action, T1 param1, T2 param2) : this()
+            public Task(Action<T, Action> action, T param) : this()
             {
                 _action = action;
-                _param1 = param1;
-                _param2 = param2;
-                
-                _thread = new Thread(this.DoWork);
-                _thread.IsBackground = true;
-            }
+                _param = param;
 
-            public Task(Action<T1, T2, Action> action, T1 param1, T2 param2,
-                Action<T1> continueWith = null) : this(action, param1, param2)
-            {
-                ContinueWith = continueWith;
-            }
-
-            public Task(Action<T1, T2, Action> action, T1 param1, T2 param2,
-                Action<T1, T2> continueWith = null) : this(action, param1, param2)
-            {
-                ContinueWith2 = continueWith;
+                _thread = new Thread(this.DoWork)
+                {
+                    IsBackground = true
+                };
             }
 
             public void Start()
@@ -103,16 +91,14 @@ namespace GZipTest.Tasks
                     //iterate action while previous action in chain is not completed
                     while(CanLoop())
                     {
-                        _action(_param1, _param2, SignalLoopCompleted);
-                        if(PreviousTaskIsCompleted())
+                        _action(_param, SignalLoopCompleted);
+                        if (PreviousTaskIsCompleted())
+                        {
+                            _action(_param, SignalLoopCompleted);
                             break;
+                        }
                     } 
 
-                   _action(_param1, _param2, SignalLoopCompleted);
-
-                    //invoke additional action if specified
-                    ContinueWith?.Invoke(_param1);
-                    ContinueWith2?.Invoke(_param1, _param2);
                 }
                 catch (Exception exception)
                 {
@@ -128,7 +114,7 @@ namespace GZipTest.Tasks
                         try { SignalError(); }
                         catch { } //ignore possible error in callback;
 
-                    //setup completed for awaiting procedure
+                    //set completed flag
                     FinishedEvent.Set();
                 }
             }

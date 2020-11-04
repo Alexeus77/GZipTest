@@ -1,30 +1,24 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace GZipTest
 {
     static class DebugDiagnostics
     {
-        [Conditional("DEBUGOUTPUT2")]
-        public static void WriteLine2(string message)
-        {
-            Console.WriteLine(message);
-        }
-
-        [System.Diagnostics.Conditional("DEBUGOUTPUT1")]
+        [Conditional("DEBUGOUTPUT")]
         public static void WriteLine(string message)
         {
             Debug.WriteLine(message);
         }
 
-
-        [System.Diagnostics.Conditional("DEBUGOUTPUT3")]
-        public static void WriteLine3(string message)
+        [Conditional("DEBUGOUTPUT")]
+        public static void ThreadMessage(string message)
         {
-            Debug.WriteLine(message);
+            WriteLine($"{Thread.CurrentThread.Name}: {message}");
         }
 
-        [System.Diagnostics.Conditional("DEBUG")]
+        [Conditional("DEBUGOUTPUT")]
         public static void ConsoleWriteLine(string message)
         {
             Console.WriteLine(message);

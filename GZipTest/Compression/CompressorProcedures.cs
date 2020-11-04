@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
+using System.Threading;
 using GZipTest.Buffering;
 using GZipTest.Streaming;
 using static GZipTest.DebugDiagnostics;
@@ -11,73 +10,72 @@ namespace GZipTest.Compression
     static class CompressorProcedures
     {
         #region compress
-        
-        public static void ReadFromStreamToBuffer(Stream fromStream, ReadBufferedStream toBuffer, Action signalCycled)
+
+        public static void ReadFromStream(this Buffers toBuffer, Stream fromStream, Action signalCycled)
         {
-            int count;
+            int count = toBuffer.BufferCapacity - sizeof(long);
             int numRead;
-            
+
             do
             {
-                MemoryStream memBytes = toBuffer.GetMemory();
-                //decrease count read to save space for the header
-                count = toBuffer.BufferCapacity - ReadBufferedStream.HeaderSize;
-
+                var buffer = toBuffer.GetMemory();
                 var position = fromStream.Position;
-                numRead = memBytes.ReadFrom(fromStream, count);
+                buffer.WriteLong(fromStream.Position);
+
+                numRead = buffer.ReadFrom(fromStream, count);
 
                 if (numRead > 0)
                 {
-                    //save data along with its position to preserve ordering in buffer
-                    toBuffer.Write(memBytes, position, numRead);
+                    if(numRead != count)
+                        buffer.SetLength(numRead + sizeof(long));
+                    toBuffer.EnqueueBuffer(buffer);
                 }
-
                 signalCycled();
+
+                ThreadMessage($"{position} : {numRead}");
             }
             while (numRead > 0 && numRead == count);
         }
 
-        public static void CompressBufferDataToStream(ReadBufferedStream toCompressStream, BuffStream fromBuffer, Action signalCycled)
+        public static void Compress(this Buffers fromBuffer, Buffers toBuffers, Action signalCycled)
         {
+            MemoryStream buffer;
 
-            MemoryStream memBytes;
-            
-            while ((memBytes = fromBuffer.GetBuffer()) != null)
+            while ((buffer = fromBuffer.GetBuffer()) != null)
             {
-                //compress data
-                var mem = toCompressStream.GetMemory();
+                var compressed = buffer.Compress(toBuffers.GetMemory());
+                compressed.Position = 0;
+                toBuffers.EnqueueBuffer(compressed);
+                fromBuffer.ReleaseBuffer(buffer);
 
-                using (var gzStream = new GZipStream(mem, CompressionMode.Compress, true))
-                {
-                    memBytes.WriteTo(gzStream);
-                    gzStream.Close();
+                signalCycled();
 
-                    signalCycled();
-
-                    fromBuffer.ReleaseBuffer(memBytes);
-                }
-
-                toCompressStream.Write(mem);
+                buffer.Position = 0;
+                var position = buffer.ReadLong();
+                ThreadMessage($"{position} : {buffer.Length}");
             }
+
         }
-        
-        public static void WriteCompressedBufferToStream(Stream toStream, BuffStream[] fromBuffers, Action signalCycled)
+
+        public static void WriteFromCompressedBuffers(this Stream toStream, Buffers[] fromBuffers, Action signalCycled)
         {
 
-            MemoryStream memBytes;
+            MemoryStream buffer;
 
             for (int i = 0; i < fromBuffers.Length; i++)
             {
-                while ((memBytes = fromBuffers[i].GetBuffer()) != null)
+                while ((buffer = fromBuffers[i].GetBuffer()) != null)
                 {
                     //write block length
-                    toStream.WriteLong(memBytes.Length);
+                    toStream.WriteLong(buffer.Length);
 
-                    memBytes.WriteTo(toStream);
+                    buffer.Position = 0;
+                    toStream.ReadFrom(buffer, (int)buffer.Length);
 
-                    fromBuffers[i].ReleaseBuffer(memBytes);
-
+                    fromBuffers[i].ReleaseBuffer(buffer);
                     signalCycled();
+
+                    ThreadMessage($"{buffer.Length}");
                 }
             }
         }
@@ -87,76 +85,72 @@ namespace GZipTest.Compression
 
         #region decompress
 
-        public static void ReadFromCompressedStreamToBuffer(Stream fromStream, ReadBufferedStream toBuffer, Action signalCycled)
+        public static void ReadFromCompressedStream(this Buffers toBuffer, Stream fromStream,  Action signalCycled)
         {
 
-            int numRead;
-
+            int numRead = 0;
+            int chunckSize;
             do
             {
                 MemoryStream memBytes = toBuffer.GetMemory();
-                
+
                 //read length of block
-                var chunckSize = (int)fromStream.ReadLong();
+                var position = fromStream.Position;
+                chunckSize = (int)fromStream.ReadLong();
 
-                numRead = memBytes.ReadFrom(fromStream, toBuffer.BufferCapacity);
-
-                if (numRead > 0)
+                if (chunckSize > 0)
                 {
-                    memBytes.SetLength(numRead);
-                    toBuffer.Write(memBytes);
-                }
 
-                signalCycled();
-            }
-            while (numRead > 0);
-        }
+                    numRead = memBytes.ReadFrom(fromStream, chunckSize);
 
-        public static void DecompressFromStreamToBuffer(ReadBufferedStream toBuffer, ReadBufferedStream fromStream,  Action signalCycled)
-        {
-            MemoryStream memBytes;
-
-            while ((memBytes = fromStream.GetBuffer()) != null)
-            {
-                //decompress data
-
-                memBytes.Position = 0;
-
-                using (var gzStream = new GZipStream(memBytes, CompressionMode.Decompress))
-                {
-                    int numRead;
-
-                    var toMemory = toBuffer.GetMemory();
-
-                    while ((numRead = toMemory.ReadFrom(gzStream, fromStream.BufferCapacity)) > 0)
+                    if (numRead > 0)
                     {
+                        memBytes.SetLength(chunckSize);
+                        toBuffer.EnqueueBuffer(memBytes);
                     }
 
-                    gzStream.Close();
-
-                    toBuffer.Write(toMemory);
+                    ThreadMessage($"{position} : {chunckSize}");
 
                     signalCycled();
                 }
-            }
 
+            }
+            while (chunckSize > 0 && numRead > 0);
         }
 
-        public static void WriteDecompressedToStream(Stream toStream, BuffStream[] fromBuffers, Action signalCycled)
+        public static void Decompress(this Buffers fromBuffer, Buffers toBuffer, Action signalCycled)
         {
+            MemoryStream buffer;
 
-            MemoryStream memBytes;
-             
+            while ((buffer = fromBuffer.GetBuffer()) != null)
+            {
+                //decompress data
+                var decompressed = buffer.DeCompress(toBuffer.GetMemory());
+                toBuffer.EnqueueBuffer(decompressed);
+
+                fromBuffer.ReleaseBuffer(buffer);
+
+                ThreadMessage($"{buffer.Length} : {decompressed.Length}");
+
+                signalCycled();
+            }
+        }
+
+        public static void WriteFromDecompressedBuffers(this Stream toStream, Buffers[] fromBuffers, Action signalCycled)
+        {
+            MemoryStream buffer;
+            
             for (int i = 0; i < fromBuffers.Length; i++)
             {
-                while ((memBytes = fromBuffers[i].GetBuffer()) != null)
+                while ((buffer = fromBuffers[i].GetBuffer()) != null)
                 {
+                    buffer.Position = 0;
+                    var position = buffer.ReadLong();
+                    buffer.WriteTo(toStream, sizeof(long), position);
 
-                    var position = memBytes.ReadLong();
+                    fromBuffers[i].ReleaseBuffer(buffer);
 
-                    memBytes.WriteTo(toStream, sizeof(long), position);
-
-                    fromBuffers[i].ReleaseBuffer(memBytes);
+                    ThreadMessage($"{position} : {buffer.Length}");
 
                     signalCycled();
                 }
@@ -164,8 +158,5 @@ namespace GZipTest.Compression
         }
 
         #endregion decompress
-
-
-
     }
 }

@@ -10,33 +10,33 @@ namespace GZipTest.Tasks.Tests
     [TestClass()]
     public class TaskerTests
     {
-        [TestMethod()]
-        public void Run_Tasker()
-        {
-            try
-            {
-                var strIn = "LAZY FOX";
-                var strOut = new StringBuilder();
+        //[TestMethod()]
+        //public void Run_Tasker()
+        //{
+        //    try
+        //    {
+        //        var strIn = "LAZY FOX";
+        //        var strOut = new StringBuilder();
 
-                var queue1 = new Queue<char>();
-                var queue2 = new Queue<char>();
-                ITasker tasker = new Tasker();
-                tasker.Queue(First, queue1, strIn).
-                    ThenQueueForEach(Second, new Queue<char>[] { queue1 }, queue2, null).
-                    Queue(Third, queue2, strOut).
-                    StartAsync().
-                    WaitAll();
+        //        var queue1 = new Queue<char>();
+        //        var queue2 = new Queue<char>();
+        //        ITasker tasker = new Tasker();
+        //        tasker.Queue(First, queue1, strIn).
+        //            ThenQueueForEach(Second, new Queue<char>[] { queue1 }, queue2, null).
+        //            Queue(Third, queue2, strOut).
+        //            StartAsync().
+        //            WaitAll();
 
-                //Assert.AreEqual(strIn, strOut.ToString());
-            }
-            catch(TaskerAggregateException ex)
-            {
-                foreach (var e in ex.InnerExceptions)
-                    if (e.GetType() == typeof(DivideByZeroException))
-                        throw e;
-            }
+        //        //Assert.AreEqual(strIn, strOut.ToString());
+        //    }
+        //    catch(TaskerAggregateException ex)
+        //    {
+        //        foreach (var e in ex.InnerExceptions)
+        //            if (e.GetType() == typeof(DivideByZeroException))
+        //                throw e;
+        //    }
 
-        }
+        //}
 
         private void First(Queue<char> queue, string str, Action signalAction)
         {
