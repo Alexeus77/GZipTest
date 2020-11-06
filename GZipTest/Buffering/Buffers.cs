@@ -10,11 +10,7 @@ namespace GZipTest.Buffering
         private readonly Queue<MemoryStream> releasedBuffers = new Queue<MemoryStream>();
         private readonly int buffersLimit;
         private readonly int releasedBuffersLimit;
-        private readonly AutoResetEvent eventBufferDequeue = new AutoResetEvent(true);
-        private readonly AutoResetEvent eventBufferQueue = new AutoResetEvent(true);
-
-        private int bufferLimitHitCount = 0;
-
+        
         public int BufferCapacity { get; private set; }
 
         public Buffers(int bufferCapacity, int buffersLimit = 100, int releasedBuffersLimit = 100)
@@ -48,7 +44,6 @@ namespace GZipTest.Buffering
 
         public MemoryStream GetBuffer()
         {
-            //eventBufferQueue.WaitOne(100);
             return DequeueBuffer();
         }
 
@@ -65,22 +60,25 @@ namespace GZipTest.Buffering
         {
             lock (buffers)
             {
-                if (buffers.Count > buffersLimit)
-                    eventBufferDequeue.WaitOne(500);
-                
+                while (buffers.Count > buffersLimit)
+                    Monitor.Wait(buffers);
+
                 buffers.Enqueue(bufferStream);
-                eventBufferQueue.Set();
             }
         }
 
         private MemoryStream DequeueBuffer()
         {
-            eventBufferDequeue.Set();
+            MemoryStream buffer;
 
             lock (buffers)
             {
-                return buffers.Count == 0 ? null : buffers.Dequeue();
+                buffer =  buffers.Count == 0 ? null : buffers.Dequeue();
+
+                Monitor.Pulse(buffers);
             }
+
+            return buffer;
         }
 
         public MemoryStream GetMemory()
