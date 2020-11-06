@@ -12,7 +12,7 @@ namespace GZipTest
         {
             BufferSize = 1024 * 1024;
             CompressorsCount = Environment.ProcessorCount;
-            MaxBuffers = 200;
+            MaxBuffers = 500;
         }
     }
 }

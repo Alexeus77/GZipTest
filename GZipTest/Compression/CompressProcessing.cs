@@ -73,11 +73,11 @@ namespace GZipTest.Compression
         {
 
             var bufStreams = Enumerable.Range(1, compressionThreadsNumber).
-                Select(i => new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse)).ToArray();
+                Select(i => new Buffers(bufferSize, maxBuffersToUse / 2 / compressionThreadsNumber, maxBuffersToUse)).ToArray();
 
             ITasker tasker = new Tasker();
             
-            var readBuffer = new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse);
+            var readBuffer = new Buffers(bufferSize, maxBuffersToUse / 2, maxBuffersToUse);
 
             tasker.Queue(readBuffer.ReadFromStream, readStream).
                 ThenQueueForEach(readBuffer.Compress, bufStreams).
@@ -92,11 +92,11 @@ namespace GZipTest.Compression
         {
 
             var bufStreams = Enumerable.Range(1, compressionThreadsNumber).
-                Select(i => new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse)).ToArray();
+                Select(i => new Buffers(bufferSize, maxBuffersToUse / 2 / compressionThreadsNumber, maxBuffersToUse)).ToArray();
 
             ITasker tasker = new Tasker();
 
-            var readBufStream = new Buffers(bufferSize, maxBuffersToUse, maxBuffersToUse);
+            var readBufStream = new Buffers(bufferSize, maxBuffersToUse / 2, maxBuffersToUse);
 
             tasker.Queue(readBufStream.ReadFromCompressedStream, readStream).
                ThenQueueForEach(readBufStream.Decompress, bufStreams).
