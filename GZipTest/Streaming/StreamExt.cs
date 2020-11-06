@@ -51,7 +51,7 @@ namespace GZipTest.Streaming
         public static MemoryStream DeCompress(this MemoryStream memoryStream, MemoryStream toStream)
         {
 
-            toStream.SetLength(0);
+            toStream.SetLength(memoryStream.Length);
 
             using (var gzStream = new GZipStream(memoryStream, CompressionMode.Decompress, true))
             {
