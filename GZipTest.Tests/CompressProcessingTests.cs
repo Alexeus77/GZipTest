@@ -16,7 +16,7 @@ namespace GZipTest.Tests
         [TestInitialize]
         public void Init()
         {
-            Settings.CompressorsCount = 2;
+            Settings.CompressorsCount = 8;
         }
 
         [TestMethod]
@@ -35,13 +35,26 @@ namespace GZipTest.Tests
 
             File.Delete(destFile);
 
-            var endlessStream = new EndlessStream((long)(1E12));
+            var endlessStream = new EndlessStream((long)1E12);
 
             using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
             {
                 Process.Compress(endlessStream, writeStream);
             }
 
+        }
+
+        [TestMethod]
+        public void DeCompress_FileToVoidStream()
+        {
+            var sourceFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2";
+
+            var voidStream = new VoidStream();
+
+            using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                Process.Decompress(readStream, voidStream);
+            }
         }
 
         [TestMethod]
@@ -73,7 +86,7 @@ namespace GZipTest.Tests
             readCompressedBuffer.Decompress(decompressedBuffer, emptyAction);
             decompressedStream.WriteFromDecompressedBuffers(new Buffers[] { decompressedBuffer }, emptyAction);
 
-            Assert.IsTrue(CompareBytes(randomStream.ToArray(), decompressedStream.ToArray()));
+            Assert.IsTrue(randomStream.CompareBytes(decompressedStream));
 
         }
 
@@ -186,13 +199,13 @@ namespace GZipTest.Tests
         [TestMethod]
         public void Decompress_СompressedLinear_CheckEqual()
         {
-            var randomStream = RandomStream(Settings.BufferSize *25);
+            var randomStream = RandomStream(Settings.BufferSize *125);
 
             randomStream.Position = 0;
             var compressed = new MemoryStream();
 
-            var readBuffer = new Buffers(Settings.BufferSize, 1);
-            var compressBuffer = new Buffers(Settings.BufferSize, 1);
+            var readBuffer = new Buffers(Settings.BufferSize);
+            var compressBuffer = new Buffers(Settings.BufferSize);
 
             void emptyAction() { }
 
@@ -206,25 +219,7 @@ namespace GZipTest.Tests
 
             Process.Decompress(compressed, decompressed);
                         
-            Assert.IsTrue(CompareBytes(randomStream.ToArray(), decompressed.ToArray()));
-        }
-
-        [TestMethod]
-        public void DecompressLinear()
-        {
-            var sourceFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2";
-            var destFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2.copy";
-
-            File.Delete(destFile);
-
-            using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
-                {
-                    writeStream.DecompressLinear(readStream);
-                }
-
-            }
+            Assert.IsTrue(randomStream.CompareBytes(decompressed));
         }
 
     }

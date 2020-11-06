@@ -12,7 +12,7 @@ namespace GZipTest.Tests.TestStreams
 
         public override bool CanRead => throw new NotImplementedException();
 
-        public override bool CanSeek => throw new NotImplementedException();
+        public override bool CanSeek => true;
 
         public override bool CanWrite => throw new NotImplementedException();
 
@@ -32,7 +32,7 @@ namespace GZipTest.Tests.TestStreams
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            throw new NotImplementedException();
+            return offset;
         }
 
         public override void SetLength(long value)
