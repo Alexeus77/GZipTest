@@ -60,7 +60,7 @@ namespace GZipTest.Buffering
         {
             lock (buffers)
             {
-                while (buffers.Count > buffersLimit)
+                while (buffersLimit!= 0 && buffers.Count > buffersLimit)
                     Monitor.Wait(buffers);
 
                 buffers.Enqueue(bufferStream);
