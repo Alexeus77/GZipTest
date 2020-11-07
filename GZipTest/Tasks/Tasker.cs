@@ -13,7 +13,7 @@ namespace GZipTest.Tasks
     {
         private readonly LinkedList<ITask> taskQueue = new LinkedList<ITask>();
 
-        ITasker ITasker.StartAsync()
+        public virtual ITasker StartAsync()
         {
             foreach (ITask task in taskQueue)
                 task.Start();
@@ -21,11 +21,12 @@ namespace GZipTest.Tasks
             return this as ITasker;
         }
 
-        void ITasker.StartSequential()
+        public ITasker StartSequential()
         {
             foreach (ITask task in taskQueue)
                 task.StartSync();
 
+            return this as ITasker;
         }
 
         void SignalError()
@@ -65,48 +66,52 @@ namespace GZipTest.Tasks
             }
         }
 
-        ITasker ITasker.ThenQueueForEach<T>(Action<T, Action> action, IEnumerable<T> objects)
+        ITasker ITasker.ThenQueueForEach<T1, T2>(Action<T1, T2> action, T1 param1, IEnumerable<T2> params2)
         {
             var previousTasks = taskQueue.ToArray();
             var taskNum = 1;
 
-            foreach (var obj in objects)
+            foreach (var obj in params2)
             {
-                Queue(action, obj, previousTasks, $"{action.Method.Name}#{taskNum++}");
+                Queue(action, param1,  obj, previousTasks, $"{action.Method.Name}#{taskNum++}");
             }
 
             return this as ITasker;
         }
 
-        ITasker ITasker.Queue<T>(Action<T, Action> action, T param)
+        ITasker ITasker.Queue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            Queue(action, param, taskQueue.ToArray());
+            Queue(action, param1, param2, taskQueue.ToArray());
             return this as ITasker;
         }
 
-        private ITasker Queue<T>(Action<T, Action> action, T param, ITask[] previousTasks, string name = null)
+        ITasker ITasker.ThenRunSync<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2)
         {
-            var task = new Task<T>(action, param)
-            {
-                Name = name ?? action.Method.Name
-            };
-            var node = taskQueue.AddLast(task);
-            if (previousTasks.Length > 0)
-                task.PreviousTaskIsCompleted = () => previousTasks.All(x => x.FinishedFlag);
-                
-            task.SignalError = SignalError;
-
-            return this as ITasker;
-        }
-
-        ITasker ITasker.ThenRunSync<T>(Action<T, Action> action, T param)
-        {
-            (this as ITasker).Queue(action, param);
+            (this as ITasker).Queue(action, param1, param2);
 
             taskQueue.Last.Value.StartSync();
 
             return this as ITasker;
         }
 
+        private ITasker Queue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2, ITask[] previousTasks, string name = null)
+        {
+            var task = new Task<T1, T2>(action, param1, param2)
+            {
+                Name = name ?? action.Method.Name
+            };
+            var node = taskQueue.AddLast(task);
+            if (previousTasks.Length > 0)
+                task.PreviousTaskIsCompleted = () => previousTasks.All(x => x.FinishedFlag);
+
+            task.SignalError = SignalError;
+
+            return this as ITasker;
+        }
+
+        public void ClearTasks()
+        {
+            taskQueue.Clear();
+        }
     }
 }

@@ -13,7 +13,6 @@ namespace GZipTest.Tasks
             Exception Exception { get; }
             void Start();
             void StartSync();
-            Func<bool> WaitLoopCompleted { get; }
         }
     }
 }

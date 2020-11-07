@@ -53,5 +53,6 @@ namespace GZipTest.Tests
                 compressedTest.CompareBytes(compressed);
             }
         }
+               
     }
 }

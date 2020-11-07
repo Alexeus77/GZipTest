@@ -7,10 +7,13 @@ namespace GZipTest.Tasks
     {
        
         ITasker StartAsync();
-        void StartSequential();
+        ITasker StartSequential();
         void WaitAll();
-        ITasker ThenQueueForEach<T>(Action<T, Action> action, IEnumerable<T> objects);
-        ITasker Queue<T>(Action<T, Action> action, T param1);
-        ITasker ThenRunSync<T>(Action<T, Action> action, T param);
+        
+        ITasker ThenQueueForEach<T1, T2>(Action<T1, T2> action, T1 param1, IEnumerable<T2> params2);
+        ITasker Queue<T1, T2>(Action<T1, T2> action, T1 param1, T2 param2);
+        ITasker ThenRunSync<T1, T2>(Action<T1, T2> action, T1 param, T2 param2);
+
+        void ClearTasks();
     }
 }

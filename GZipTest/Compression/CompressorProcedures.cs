@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Threading;
+﻿using System.IO;
 using GZipTest.Buffering;
 using GZipTest.Streaming;
 using static GZipTest.DebugDiagnostics;
@@ -11,15 +9,20 @@ namespace GZipTest.Compression
     {
         #region compress
 
-        public static void ReadFromStream(this Buffers toBuffer, Stream fromStream, Action signalCycled)
+        public static void ReadFromStream(this Buffers toBuffer, Stream fromStream)
         {
+            if (fromStream.Position == fromStream.Length)
+                return;
+            
             int count = toBuffer.BufferCapacity - sizeof(long);
             int numRead;
 
             do
             {
                 var buffer = toBuffer.GetMemory();
+#if DEBUGOUTPUT
                 var position = fromStream.Position;
+#endif
                 buffer.WriteLong(fromStream.Position);
 
                 numRead = buffer.ReadFrom(fromStream, count);
@@ -30,14 +33,14 @@ namespace GZipTest.Compression
                         buffer.SetLength(numRead + sizeof(long));
                     toBuffer.EnqueueBuffer(buffer);
                 }
-                signalCycled();
-
+#if DEBUGOUTPUT
                 ThreadMessage($"{position} : {numRead}");
+#endif
             }
             while (numRead > 0 && numRead == count);
         }
 
-        public static void Compress(this Buffers fromBuffer, Buffers toBuffers, Action signalCycled)
+        public static void Compress(this Buffers fromBuffer, Buffers toBuffers)
         {
             MemoryStream buffer;
 
@@ -48,8 +51,6 @@ namespace GZipTest.Compression
                 toBuffers.EnqueueBuffer(compressed);
                 fromBuffer.ReleaseBuffer(buffer);
 
-                signalCycled();
-
                 buffer.Position = 0;
                 var position = buffer.ReadLong();
                 ThreadMessage($"{position} : {buffer.Length}");
@@ -57,7 +58,7 @@ namespace GZipTest.Compression
 
         }
 
-        public static void WriteFromCompressedBuffers(this Stream toStream, Buffers[] fromBuffers, Action signalCycled)
+        public static void WriteFromCompressedBuffers(this Stream toStream, Buffers[] fromBuffers)
         {
 
             MemoryStream buffer;
@@ -73,19 +74,18 @@ namespace GZipTest.Compression
                     toStream.ReadFrom(buffer, (int)buffer.Length);
 
                     fromBuffers[i].ReleaseBuffer(buffer);
-                    signalCycled();
-
+                    
                     ThreadMessage($"{buffer.Length}");
                 }
             }
         }
 
 
-        #endregion compress
+#endregion compress
 
-        #region decompress
+#region decompress
 
-        public static void ReadFromCompressedStream(this Buffers toBuffer, Stream fromStream,  Action signalCycled)
+        public static void ReadFromCompressedStream(this Buffers toBuffer, Stream fromStream)
         {
 
             int numRead = 0;
@@ -105,20 +105,20 @@ namespace GZipTest.Compression
 
                     if (numRead > 0)
                     {
-                        memBytes.SetLength(chunckSize);
+                        if(memBytes.Length != chunckSize)
+                            memBytes.SetLength(chunckSize);
                         toBuffer.EnqueueBuffer(memBytes);
                     }
 
                     ThreadMessage($"{position} : {chunckSize}");
 
-                    signalCycled();
                 }
 
             }
             while (chunckSize > 0 && numRead > 0);
         }
 
-        public static void Decompress(this Buffers fromBuffer, Buffers toBuffer, Action signalCycled)
+        public static void Decompress(this Buffers fromBuffer, Buffers toBuffer)
         {
             MemoryStream buffer;
 
@@ -132,11 +132,10 @@ namespace GZipTest.Compression
 
                 ThreadMessage($"{buffer.Length} : {decompressed.Length}");
 
-                signalCycled();
             }
         }
 
-        public static void WriteFromDecompressedBuffers(this Stream toStream, Buffers[] fromBuffers, Action signalCycled)
+        public static void WriteFromDecompressedBuffers(this Stream toStream, Buffers[] fromBuffers)
         {
             MemoryStream buffer;
             
@@ -151,12 +150,10 @@ namespace GZipTest.Compression
                     fromBuffers[i].ReleaseBuffer(buffer);
 
                     ThreadMessage($"{position} : {buffer.Length}");
-
-                    signalCycled();
                 }
             }
         }
 
-        #endregion decompress
+#endregion decompress
     }
 }

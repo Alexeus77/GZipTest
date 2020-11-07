@@ -44,8 +44,9 @@
   <ItemGroup>
     <Compile Include="ArgumentsParser.cs" />
     <Compile Include="Compression\CompressorProcedures.cs" />
-    <Compile Include="Compression\CompressProcessing.cs" />
+    <Compile Include="Compression\Compressor.cs" />
     <Compile Include="Buffering\Buffers.cs" />
+    <Compile Include="Compression\ICompressor.cs" />
     <Compile Include="DebugDiagnostics.cs" />
     <Compile Include="Exceptions\CatchedException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

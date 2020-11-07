@@ -21,7 +21,7 @@ namespace GZipTest.Tests
         [ClassInitializeAttribute]
         public static void ClassInit(TestContext context)
         {
-            exec = new Runner();
+            exec = new Runner(new Compression.Compressor(), new Logger());
         }
 
         [TestMethod()]
