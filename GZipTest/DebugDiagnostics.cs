@@ -1,32 +1,60 @@
-﻿namespace GZipTest
+﻿using System;
+using System.Diagnostics;
+using System.Threading;
+
+namespace GZipTest
 {
     static class DebugDiagnostics
     {
-        [System.Diagnostics.Conditional("DEBUGOUTPUT2")]
-        public static void WriteLine2(string message)
-        {
-            System.Diagnostics.Debug.WriteLine(message);
-        }
+        static int i = 0;
 
-        [System.Diagnostics.Conditional("DEBUGOUTPUT1")]
+        private static PerformanceCounter cpuCounter;
+        private static PerformanceCounter ramCounter;
+
+        static DebugDiagnostics()
+        {
+            cpuCounter = new PerformanceCounter(
+            "Processor",
+            "% Processor Time",
+            "_Total",
+            true
+            );
+
+            ramCounter = new PerformanceCounter("Memory", "Available MBytes", true);
+        }
+        
+        [Conditional("DEBUGOUTPUT")]
         public static void WriteLine(string message)
         {
-            System.Diagnostics.Debug.WriteLine(message);
+            Debug.WriteLine(message);
         }
 
-
-        [System.Diagnostics.Conditional("DEBUGOUTPUT")]
-        public static void WriteLine3(string message)
+        [Conditional("DEBUGOUTPUT")]
+        public static void ThreadMessage(string message)
         {
-            System.Diagnostics.Debug.WriteLine(message);
+            WriteLine($"{Thread.CurrentThread.Name}: {message}");
+
+            i++;
+
+            if (i % 200 == 0)
+            {
+                ConsoleWriteLine($"GC allocated: {GC.GetTotalMemory(false) / (1024*1024)} Mb");
+                WriteCounters();
+            }
         }
 
-        [System.Diagnostics.Conditional("DEBUG")]
+        [Conditional("DEBUGOUTPUT1")]
+        private static void WriteCounters()
+        {
+            ConsoleWriteLine($"CPU now: {cpuCounter.NextValue()} %");
+            ConsoleWriteLine($"RAM now: {ramCounter.NextValue()} Mb");
+        }
+
+        [Conditional("DEBUGOUTPUT")]
         public static void ConsoleWriteLine(string message)
         {
-            System.Console.WriteLine(message);
+            Console.WriteLine(message);
         }
-
 
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using System.IO.Compression;
 using GZipTest.Buffering;
 using GZipTest.Streaming;
 using static GZipTest.DebugDiagnostics;
@@ -9,241 +8,148 @@ namespace GZipTest.Compression
     static class CompressorProcedures
     {
         #region compress
-        
-        public static void ReadFromStreamToBuffer(Stream fromStream, BuffManager toBuffer)
+
+        public static void ReadFromStream(this Buffers toBuffer, Stream fromStream)
         {
-            int count;
+            if (fromStream.Position == fromStream.Length)
+                return;
+            
+            int count = toBuffer.BufferCapacity - sizeof(long);
             int numRead;
-            uint position = 0;
 
             do
             {
-                MemoryStream memBytes = toBuffer.GetFreeMem();
-                count = BuffManager.ChunkSize;
+                var buffer = toBuffer.GetMemory();
+#if DEBUGOUTPUT
+                var position = fromStream.Position;
+#endif
+                buffer.WriteLong(fromStream.Position);
 
-                numRead = memBytes.ReadFrom(fromStream, count);
+                numRead = buffer.ReadFromSetLen(fromStream, count);
 
                 if (numRead > 0)
                 {
-                    //cut length to actual bytes read
-                    memBytes.SetLength(numRead);
-
-                    //save data along with its position to preserve ordering in buffer
-                    toBuffer.WriteSequenceBuf(memBytes, position);
-                    toBuffer.AddSequencePos(position++);
-
-                    WriteLine($"R:: {fromStream.Position} {memBytes.Length}");
+                    toBuffer.EnqueueBuffer(buffer);
                 }
+#if DEBUGOUTPUT
+                ThreadMessage($"{position} : {numRead}");
+#endif
             }
             while (numRead > 0 && numRead == count);
         }
 
-        public static void CompressBufferDataToStream(GZipStream toStream, BuffManager fromBuffer)
+        public static void Compress(this Buffers fromBuffer, Buffers toBuffers)
         {
+            MemoryStream buffer;
 
-            MemoryStream memBytes;
-            //get data from chunked buffer with preserved position
-            uint position;
-            while ((memBytes = fromBuffer.ReadSequenceBuf(out position)) != null)
+            while ((buffer = fromBuffer.GetBuffer()) != null)
             {
-                //set underlying stream's position to preserve ordering in stream's buffer
-                toStream.BaseStream.Position = position;
-                WriteLine($"C::{(toStream.BaseStream as Buffering.BufferedStream).Id} {position} {memBytes.Length}");
-                //compress data
-                memBytes.WriteTo(toStream);
+                var compressed = buffer.Compress(toBuffers.GetMemory());
+                compressed.Position = 0;
+                toBuffers.EnqueueBuffer(compressed);
+                fromBuffer.ReleaseBuffer(buffer);
 
-                //release buffer data
-                fromBuffer.ReleaseMem(memBytes);
-            }
-        }
-        
-        public static void WriteCompressedBufferToStream(Stream toStream, BuffManager fromBuffer)
-        {
-
-            MemoryStream memBytes;
-            byte streamId;
-
-            //stop reading buffer if last block left
-            if (fromBuffer.AtEndOfSequence())
-                return;
-
-            
-            //we need position for correct block ordering
-            long position = fromBuffer.PeekSequencePos();
-
-            
-
-            //we get blocks in order. we get id of holding stream and store it in output stream
-            while ((memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, false)) != null &&
-                position != -1)
-            {
-                WriteLine2($"WC::{streamId} {position} {memBytes.Length} {fromBuffer.CompressedBuffersCount()}");
-                
-                //write block header
-                toStream.WriteBlockHeader(streamId, (ushort)memBytes.Length);
-
-                //write compressed block
-                memBytes.WriteTo(toStream);
-
-                //release buffer
-                fromBuffer.ReleaseMem(memBytes);
-                
-                ////stop reading buffer if last block left
-                //if (fromBuffer.AtEndOfSequence())
-                //    return;
-
-                position = fromBuffer.GetNextSequencePos();
+                //buffer.Position = 0;
+                //var position = buffer.ReadLong();
+                ThreadMessage($"{buffer.Length} : {compressed.Length}");
             }
 
         }
 
-        public static void WriteCompressedBufferTailToStream(Stream toStream, BuffManager fromBuffer)
+        public static void WriteFromCompressedBuffers(this Stream toStream, Buffers[] fromBuffers)
         {
 
-            MemoryStream memBytes;
-            byte streamId;
+            MemoryStream buffer;
 
-            //we need position for correct block ordering
-            long position = fromBuffer.PeekSequencePos();
-
-            //we get blocks in order. we get id of holding stream and store it in output stream
-            while ((memBytes = fromBuffer.ReadCompressedBuffer(position, out streamId, true)) != null &&
-                position != uint.MaxValue)
+            for (int i = 0; i < fromBuffers.Length; i++)
             {
-                WriteLine($"WC::{streamId} {position} {memBytes.Length}");
-                
-                //write block header
-                toStream.WriteBlockHeader(streamId, (ushort)memBytes.Length);
-
-                //write compressed block
-                memBytes.WriteTo(toStream);
-
-                //release buffer
-                fromBuffer.ReleaseMem(memBytes);
-
-                //move to next block position
-                position = fromBuffer.GetNextSequencePos();
-            }
-
-        }
-
-        #endregion compress
-
-        #region decompress
-
-        /// <summary>
-        /// Reads compressed data from input stream into chunked buffer
-        /// </summary>
-        /// <param name="fromStream">input stream</param>
-        /// <param name="buffer">chunked buffer</param>
-        /// <returns></returns>
-        public static void ReadFromCompressedStreamToBuffer(Stream fromStream, BuffManager toBuffer)
-        {
-
-            //read block header
-            byte streamId;
-            ushort length;
-        
-            uint position = 0;
-
-            while (fromStream.ReadBlockHeader(out streamId, out length))
-            {
-                //get free buffer for data
-                MemoryStream memBytes = toBuffer.GetFreeMem();
-                int numRead;
-
-                //read num of bytes specified in block header
-                int count = (int)length;
-
-                numRead = memBytes.ReadFrom(fromStream, count);
-                
-                WriteLine($"R::{streamId} {position} {count}");
-
-                //cut length to actual num read
-                memBytes.SetLength(numRead);
-                
-                //write to buffer data, position and stream number
-                toBuffer.WriteCompressedBuffer(memBytes, position, streamId);
-
-                //store position for ordering blocks
-                toBuffer.AddSequencePos(position++);
-
-            }
-        }
-
-        public static void DecompressFromStreamToBuffer(GZipStream fromStream, BuffManager toBuffer)
-        {
-            var chunkedStream = fromStream.BaseStream as Buffering.BufferedStream;
-            System.Diagnostics.Debug.Assert(chunkedStream != null, "The base stream for decompression is not of the valid type. Must be of ChunkBufferedStream type.");
-            
-
-            //read from underlying chunked stream through gzipstream descompression
-            //each chunked stream reads data marked with its number
-            int numRead;
-            long position = 0;
-            MemoryStream memCurrent = null;
-
-            MemoryStream memBytes = toBuffer.GetFreeMem();
-            while ((numRead = memBytes.ReadFrom(fromStream, BuffManager.ChunkSize)) > 0)
-            {
-                //read position info from chunked stream
-                //all positions read are queued and also blocks should be chained 
-                //in the same order comparative with other threads' streams
-
-                memBytes.SetLength(numRead);
-
-                if (chunkedStream.ReadPositions.Count > 0)
+                while ((buffer = fromBuffers[i].GetBuffer()) != null)
                 {
-                    position = chunkedStream.ReadPositions.Dequeue();
-                    toBuffer.WriteDecompressedBuffer(memBytes, position, chunkedStream.Id);
+                    //write block length
+                    toStream.WriteLong(buffer.Length);
+
+                    buffer.Position = 0;
+                    toStream.ReadFrom(buffer, (int)buffer.Length);
+
+                    fromBuffers[i].ReleaseBuffer(buffer);
+                    
+                    ThreadMessage($"{buffer.Length}");
                 }
-                else
+            }
+        }
+
+
+#endregion compress
+
+#region decompress
+
+        public static void ReadFromCompressedStream(this Buffers toBuffer, Stream fromStream)
+        {
+
+            int numRead = 0;
+            int chunckSize;
+            do
+            {
+                MemoryStream memBytes = toBuffer.GetMemory();
+
+                //read length of block
+                var position = fromStream.Position;
+                chunckSize = (int)fromStream.ReadLong();
+
+                if (chunckSize > 0)
                 {
-                    memBytes.WriteTo(memCurrent);
+
+                    numRead = memBytes.ReadFromSetLen(fromStream, chunckSize);
+
+                    if (numRead > 0)
+                    {
+                        toBuffer.EnqueueBuffer(memBytes);
+                    }
+
+                    ThreadMessage($"{position} : {chunckSize}");
+
                 }
 
-                WriteLine($"D::{chunkedStream.Id} {position} {numRead}");
-                
-                memCurrent = memBytes;
-
-                memBytes = toBuffer.GetFreeMem();
-
             }
-
+            while (chunckSize > 0 && numRead > 0);
         }
 
-        /// <summary>
-        /// Writes decompressed data from buffer to output stream
-        /// </summary>
-        /// <param name="toStream">output stream</param>
-        /// <param name="buffManager">chunked buffer</param>
-        /// <returns></returns>
-        public static void WriteDecompressedToStream(Stream toStream, BuffManager buffManager)
+        public static void Decompress(this Buffers fromBuffer, Buffers toBuffer)
         {
-            MemoryStream memBytes;
+            MemoryStream buffer;
 
-            //get posiotion in read order
-            long position = buffManager.PeekSequencePos();
-
-            //get the chunk from position needed
-            while ((memBytes = buffManager.ReadDecompressedBuffer(position)) != null &&
-                position != -1)
-
+            while ((buffer = fromBuffer.GetBuffer()) != null)
             {
-                WriteLine($"W::{position} {memBytes.Length}");
+                //decompress data
+                var decompressed = buffer.DeCompress(toBuffer.GetMemory());
+                toBuffer.EnqueueBuffer(decompressed);
 
-                memBytes.WriteTo(toStream);
-                buffManager.ReleaseMem(memBytes);
+                fromBuffer.ReleaseBuffer(buffer);
 
-                //move to next position
-                position = buffManager.GetNextSequencePos();
+                ThreadMessage($"{buffer.Length} : {decompressed.Length}");
+
             }
-
         }
 
-        #endregion decompress
+        public static void WriteFromDecompressedBuffers(this Stream toStream, Buffers[] fromBuffers)
+        {
+            MemoryStream buffer;
+            
+            for (int i = 0; i < fromBuffers.Length; i++)
+            {
+                while ((buffer = fromBuffers[i].GetBuffer()) != null)
+                {
+                    buffer.Position = 0;
+                    var position = buffer.ReadLong();
+                    buffer.WriteTo(toStream, sizeof(long), position);
 
+                    fromBuffers[i].ReleaseBuffer(buffer);
 
+                    ThreadMessage($"{position} : {buffer.Length}");
+                }
+            }
+        }
 
+#endregion decompress
     }
 }

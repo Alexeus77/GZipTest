@@ -1,14 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using GZipTest;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace GZipTest.Tests
 {
     [TestClass()]
-    public class ExecutionTests
+    public class RunnerTests
     {
         string[] paramsWithoutMode = new string[] { "" };
         string[] paramsCompressModeWithoutFile = new string[] { "cOmpress" };
@@ -16,19 +11,19 @@ namespace GZipTest.Tests
         string[] paramsDeCompressModeWithoutTargetFile = new string[] { "dEcompress", "source" };
         string[] paramsDeCompressModeSourceFileNotFound = new string[] { "dEcompress", "source", "target" };
 
-        static GZipTest.Runner exec;
+        static Runner runner;
 
         [ClassInitializeAttribute]
         public static void ClassInit(TestContext context)
         {
-            exec = new Runner();
+            runner = new Runner(new Compression.Compressor(), new Logger());
         }
 
         [TestMethod()]
         [ExpectedException(typeof(Exceptions.CatchedException))]
         public void Expect_ArgumentException_ModeNotSpecifiedTest()
         {
-            exec.Start(paramsWithoutMode);
+            runner.Start(paramsWithoutMode);
         }
 
         [TestMethod()]
@@ -36,7 +31,7 @@ namespace GZipTest.Tests
         public void Expect_ArgumentException_FileNotSpecifiedTest()
         {
             
-            exec.Start(paramsCompressModeWithoutFile);
+            runner.Start(paramsCompressModeWithoutFile);
         }
 
        
@@ -44,7 +39,7 @@ namespace GZipTest.Tests
         public void Expect_ArgumentException_TargetFileNotSpecifiedTest()
         {
             
-            exec.Start(paramsDeCompressModeWithoutTargetFile);
+            runner.Start(paramsDeCompressModeWithoutTargetFile);
         }
 
         [TestMethod()]
@@ -52,7 +47,7 @@ namespace GZipTest.Tests
         public void Expect_ArgumentException_SourceFileNotFound()
         {
             
-            exec.Start(paramsDeCompressModeSourceFileNotFound);
+            runner.Start(paramsDeCompressModeSourceFileNotFound);
         }
 
     }

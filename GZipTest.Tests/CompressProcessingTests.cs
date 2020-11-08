@@ -1,109 +1,195 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using GZipTest;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using System.Reflection;
-using static GZipTest.Compression.Process;
 using static GZipTest.Tests.CompressTestHelper;
-
+using GZipTest.Streaming;
+using GZipTest.Buffering;
+using GZipTest.Compression;
+using GZipTest.Tests.TestStreams;
+using GZipTest.Tests.Tasks;
+using GZipTest.Tasks;
 
 namespace GZipTest.Tests
 {
     [TestClass()]
     public class CompressProcessingTests
-
     {
 
+        ICompressor compressor = null;
 
-        //[TestMethod()]
-        public void CompressDecompressFile()
+        [TestInitialize]
+        public void Init()
         {
+            Settings.CompressorsCount = 8;
 
-
-            string source = @"C:\\ISO\\1\\VS2012.iso";
-            CompressFile(source, source + ".gz");
-
-            DeCompressFile(source + ".gz");
-            // Assert.IsTrue(FileEquals(source, source + ".gz.iso"));
+            compressor = new Compressor();
         }
 
         [TestMethod]
-        public void CompressAndDecompressResourceTest()
+        public void Compress_EndlessStream()
         {
-            foreach (var resName in GetCompressedResourcesNames())
+            var endless = new EndlessStream((long)(Settings.BufferSize * 1E2));
+            var voidStream = new VoidStream();
+
+            compressor.Compress(endless, voidStream);
+        }
+
+//        [TestMethod]
+        public void Compress_EndlessStreamToFile()
+        {
+            var destFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2";
+
+            File.Delete(destFile);
+
+            var endlessStream = new EndlessStream((long)1E12);
+
+            using (var writeStream = new FileStream(destFile, FileMode.CreateNew, FileAccess.Write))
             {
-                for (int i = 0; i < 5; i++)
-                {
-                    //var resName = GetCompressedResourcesNames(). //.Where(n => n.Contains("Starter")).
-                    //Skip(0).First();
+                compressor.Compress(endlessStream, writeStream);
+            }
 
+        }
 
-                    Stream resStream;
-                    Stream decompressed = GetDecompressedResource(resName, out resStream);
-                    decompressed.Position = 0;
+  //      [TestMethod]
+        public void DeCompress_FileToVoidStream()
+        {
+            var sourceFile = @"C:\Users\admin\source\repos\GZipTest\TestCmd\test.blob.gz2";
 
-                    Stream compressedToTest = new MemoryStream();
-                    Compress(decompressed, compressedToTest);
+            var voidStream = new VoidStream();
 
-                    compressedToTest.Position = 0;
-
-                    Stream decompressedToTest = new MemoryStream();
-                    Decompress(compressedToTest, decompressedToTest);
-
-                    Assert.IsTrue(decompressed.Length == decompressedToTest.Length,
-                        $"Decompressed streams lengths are not equal. Iteration {i}");
-
-                    Assert.IsTrue(CompareStreams(decompressed, decompressedToTest),
-                        $"Decompressed streams contents are not equal. Iteration {i}");
-
-                }
+            using (var readStream = new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                compressor.Decompress(readStream, voidStream);
             }
         }
 
-        
-        private Stream GetDecompressedResource(string resourceName, out Stream resStream)
+        [TestMethod]
+        public void LinearCompressDecompress_CheckEqual()
         {
-            resStream = LoadTestResource(resourceName);
+            //arrange
+            var randomStream = RandomStream(Settings.BufferSize * 5);
+            var compressedStream = new MemoryStream();
+            var decompressedStream = new MemoryStream();
+            //linear execution in a single thread
+            //1 compressor, 0 (infinite) buffers to prevent lock
+            compressor = new Compressor(new LinearTasker(), Settings.BufferSize, 1, 0);
 
-            Stream decompressedMemoryLinear = new MemoryStream();
-            CompressTestHelper.DeCompressLinear(resStream, decompressedMemoryLinear);
+            //act
+            randomStream.Position = 0;
+            compressor.Compress(randomStream, compressedStream);
 
-            return decompressedMemoryLinear;
+            compressedStream.Position = 0;
+            compressor.Decompress(compressedStream, decompressedStream);
+
+            //assert
+            Assert.IsTrue(randomStream.CompareBytes(decompressedStream));
 
         }
 
-        private bool CompareStreams(Stream stream1, Stream stream2)
+        [TestMethod]
+        public void ReadFromStreamToBuffer_CheckCounters()
         {
-            if (stream1.Length != stream2.Length)
-                return false;
 
-            int byte1 = 0;
-            int byte2 = 0;
+            //arrange
+            const int bufAmp = 3;
 
-            stream1.Position = 0;
-            stream2.Position = 0;
+            const int expectedBufCount = 4;
+            const int expectedReleasedCount = 0;
+            
+            var stream = new MemoryStream(new byte[Settings.BufferSize * bufAmp]);
+            var buffStream = new Buffers(Settings.BufferSize);
 
-            while ((byte1 = stream1.ReadByte()) != -1 && (byte2 = stream2.ReadByte()) != -1)
-            {
-                if (byte1 != byte2)
-                    return false;
-            }
+            //act
+            buffStream.ReadFromStream(stream);
 
-            return stream1.Position == stream2.Position;
+            //assert
+            Assert.AreEqual(expectedBufCount, buffStream.BuffersCount, "Buffer count");
+            Assert.AreEqual(expectedReleasedCount, buffStream.ReleasedCount, "Released count");            
         }
 
-        private Stream LoadTestResource(string resourceName)
+        [TestMethod]
+        public void CompressBufferDataToStream_CheckCounters()
         {
-            return Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            //arrange
+            const int bufAmp = 3;
+
+            var buffStream = new Buffers(Settings.BufferSize);
+            var buffStreamCompressed = new Buffers(Settings.BufferSize);
+            var randomStream = RandomStream(Settings.BufferSize * bufAmp);
+            buffStream.ReadFromStream(randomStream);
+                        
+            //act
+            buffStream.Compress(buffStreamCompressed);
+
+            //assert
+
+            Assert.AreEqual(4, buffStreamCompressed.BuffersCount);
+            Assert.AreEqual(4, buffStream.ReleasedCount);
+        }
+        [TestMethod]
+        public void ParallelCompressDecompress_CheckEqual()
+        {
+            //arrange
+            MemoryStream randomStream = RandomStream(Settings.BufferSize * 15);
+            var compressedStream = new MemoryStream();
+            var decompressedStream = new MemoryStream();
+
+            //act
+            randomStream.Position = 0;
+            compressor.Compress(randomStream, compressedStream);
+                       
+            compressedStream.Position = 0;
+            compressor.Decompress(compressedStream, decompressedStream);
+
+            //assert
+            Assert.IsTrue(randomStream.CompareBytes(decompressedStream));
         }
 
-        private IEnumerable<string> GetCompressedResourcesNames()
+        [TestMethod]
+        public void Compress_ThenDecompressLinear_CheckEqual()
         {
-            return Assembly.GetExecutingAssembly().GetManifestResourceNames()
-                .Where(name => Path.GetExtension(name) == ".gz");
+            var randomStream = RandomStream(Settings.BufferSize * 125);
+
+            var compressedStream = new MemoryStream();
+            randomStream.Position = 0;
+
+            compressor.Compress(randomStream, compressedStream);
+
+            var decompressedStream = new MemoryStream();
+            
+            compressedStream.Position = 0;
+
+            decompressedStream.DecompressLinear(compressedStream);
+            
+            Assert.IsTrue(randomStream.CompareBytes(decompressedStream));
+
+            //CompareBytes(randomStream.ToArray(), decompressedStream.ToArray());
         }
+
+        [TestMethod]
+        public void Decompress_СompressedLinear_CheckEqual()
+        {
+            var randomStream = RandomStream(Settings.BufferSize *5);
+
+            randomStream.Position = 0;
+            var compressed = new MemoryStream();
+
+            var readBuffer = new Buffers(Settings.BufferSize);
+            var compressBuffer = new Buffers(Settings.BufferSize);
+
+
+            readBuffer.ReadFromStream(randomStream);
+            readBuffer.Compress(compressBuffer);
+            compressed.WriteFromCompressedBuffers(new Buffers[] { compressBuffer });
+
+            compressed.Position = 0;
+
+            var decompressed = new MemoryStream();
+
+            compressor.Decompress(compressed, decompressed);
+                        
+            Assert.IsTrue(randomStream.CompareBytes(decompressed));
+        }
+
     }
 }

@@ -1,89 +1,88 @@
 ﻿using System.IO;
 using System;
+using System.IO.Compression;
 
 namespace GZipTest.Streaming
 {
     static class StreamExt
     {
-        
-        public static int ReadFrom(this MemoryStream memBytes, Stream stream, int count)
+
+        public static void WriteLong(this Stream stream, long l)
+        {
+            stream.Write(BitConverter.GetBytes(l), 0, sizeof(long));
+        }
+
+        public static long ReadLong(this Stream stream)
+        {
+            var buf = new Byte[sizeof(long)];
+            stream.Read(buf, 0, sizeof(long));
+
+            return BitConverter.ToInt64(buf, 0);
+        }
+
+        public static int ReadFromSetLen(this Stream toStream, Stream fromStream, int count)
         {
             byte[] bytes = new byte[count];
 
-            var numRead = stream.Read(bytes, 0, count);
-            memBytes.Write(bytes, 0, numRead);
-
+            var numRead = fromStream.Read(bytes, 0, count);
+            if (numRead > 0)
+            {
+                var length = toStream.Position + numRead;
+                if(length != toStream.Length)
+                    toStream.SetLength(length);
+                toStream.Write(bytes, 0, numRead);
+            }
             return numRead;
         }
 
-        public static void WriteBlockHeader(this Stream stream, byte streamId, ushort blockLength)
+        public static int ReadFrom(this Stream toStream, Stream fromStream, int count)
         {
-            //write stream number of the block
-            stream.WriteByte(streamId);
+            byte[] bytes = new byte[count];
 
-            ////write block position
-            //var positionBytes = System.BitConverter.GetBytes(blockPosition);
-            //stream.Write(positionBytes, 0, positionBytes.Length);
-
-            //write block length
-            var lengthBytes = BitConverter.GetBytes(blockLength);
-            stream.Write(lengthBytes, 0, sizeof(ushort));
-        }
-
-        public static void WriteFileHeader(this Stream stream, byte streamsNumber)
-        {
-            stream.WriteByte(0x1f);
-            stream.WriteByte(0x9b);
-            stream.WriteByte(streamsNumber);
-        }
-
-        public static bool ReadFileHeader(this Stream stream, out byte streamsNumber)
-        {
-            streamsNumber = 0;
-
-            if (stream.Length > 3)
+            var numRead = fromStream.Read(bytes, 0, count);
+            if (numRead > 0)
             {
-                byte gzipMagicNumber = 0;
-                if (stream.ReadByte() == 0x1f)
+                toStream.Write(bytes, 0, numRead);
+            }
+            return numRead;
+        }
+
+        public static void WriteTo(this MemoryStream memBytes, Stream stream, long fromOffset, long toOffset)
+        {
+            stream.Seek(toOffset, SeekOrigin.Begin);
+            stream.Write(memBytes.GetBuffer(), (int)fromOffset, (int)(memBytes.Length - fromOffset));
+
+        }
+
+        public static MemoryStream Compress(this MemoryStream memoryStream, MemoryStream toStream)
+        {
+            using (var gz = new GZipStream(toStream, CompressionMode.Compress, true))
+            {
+                memoryStream.WriteTo(gz);
+                gz.Close();
+            }
+
+            return toStream;
+        }
+
+        public static MemoryStream DeCompress(this MemoryStream memoryStream, MemoryStream toStream)
+        {
+
+            using (var gzStream = new GZipStream(memoryStream, CompressionMode.Decompress, true))
+            {
+                memoryStream.Position = 0;
+
+                while (toStream.ReadFromSetLen(gzStream, (int)memoryStream.Length) > 0)
                 {
-                    gzipMagicNumber = (byte)stream.ReadByte();
-                    if (gzipMagicNumber == 0x9b)
-                        streamsNumber = (byte)stream.ReadByte();
-                    else if (gzipMagicNumber == 0x8b)
-                        streamsNumber = 1;
                 }
+
+                gzStream.Close();
             }
 
-            
-            return streamsNumber > 0;
+            return toStream;
         }
 
-        public static bool ReadBlockHeader(this Stream stream, out byte streamId,  out ushort blockLength)
-        {
-            if (stream.Length - stream.Position > 1 + sizeof(short))
-            {
 
-                ///read block length
-
-                //read stream number of the block
-                streamId = (byte)stream.ReadByte();
-
-                //var positionBytes = new byte[sizeof(long)];
-                //stream.Read(positionBytes, 0, positionBytes.Length);
-                //blockPosition = BitConverter.ToInt64(positionBytes, 0);
-
-                var lengthBytes = new byte[sizeof(ushort)];
-                stream.Read(lengthBytes, 0, sizeof(ushort));
-                blockLength = BitConverter.ToUInt16(lengthBytes, 0);
-
-                return true;
-            }
-
-            streamId = 0;
-            blockLength = 0;
-            
-            return false;
-        }
 
     }
 }

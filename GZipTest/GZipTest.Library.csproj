@@ -9,13 +9,13 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GZipTest</RootNamespace>
     <AssemblyName>GZipTest.Library</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -43,16 +43,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArgumentsParser.cs" />
-    <Compile Include="Buffering\BuffManager.cs" />
-    <Compile Include="Buffering\ParallelBuf.cs" />
-    <Compile Include="Buffering\ParallelBufQueue.cs" />
-    <Compile Include="Buffering\SeqBuf.cs" />
     <Compile Include="Compression\CompressorProcedures.cs" />
-    <Compile Include="Compression\CompressProcessing.cs" />
-    <Compile Include="Buffering\BufferedStream.cs" />
+    <Compile Include="Compression\Compressor.cs" />
+    <Compile Include="Buffering\Buffers.cs" />
+    <Compile Include="Compression\ICompressor.cs" />
     <Compile Include="DebugDiagnostics.cs" />
     <Compile Include="Exceptions\CatchedException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="Streaming\StreamExt.cs" />
     <Compile Include="Tasks\ITask.cs" />
     <Compile Include="Tasks\ITasker.cs" />

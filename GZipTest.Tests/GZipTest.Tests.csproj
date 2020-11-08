@@ -8,7 +8,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GZipTest.Tests</RootNamespace>
     <AssemblyName>GZipTest.Tests</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
@@ -26,6 +26,7 @@
     <DefineConstants>TRACE;DEBUG;DEBUGOUTPUT</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -34,6 +35,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -52,15 +54,14 @@
   </Choose>
   <ItemGroup>
     <Compile Include="CompressProcessingTests.cs" />
-    <Compile Include="CompressTestHelper.cs" />
-    <Compile Include="ExecutionTests.cs" />
-    <Compile Include="Tasks\TaskerTests.cs" />
+    <Compile Include="Helpers\CompressTestHelper.cs" />
+    <Compile Include="Tasks\LinearTasker.cs" />
+    <Compile Include="TestStreams\EndlessStream.cs" />
+    <Compile Include="RunnerTests.cs" />
+    <Compile Include="StreamExtTests.cs" />
+    <Compile Include="TaskerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\Alice_in_Wonderland.pdf.gz" />
-    <EmbeddedResource Include="Resources\dadoes.pdf.gz" />
-    <EmbeddedResource Include="Resources\Starter.xml.gz" />
+    <Compile Include="TestStreams\VoidStream.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GZipTest.Console\GZipTest.PConsole.csproj">
@@ -72,6 +73,7 @@
       <Name>GZipTest.Library</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

@@ -7,18 +7,18 @@ namespace GZipTest.Tasks
     {
         private class Task<T1, T2> : ITask
         {
-            Action<T1, T2> _action;
-            T1 _param1;
-            T2 _param2;
+            
+            private readonly Action<T1, T2> _action;
+            private readonly T1 _param1;
+            private readonly T2 _param2;
             volatile bool _finished;
-            object _lockObject = new object();
-
+            private readonly object _lockObject = new object();
+            private readonly Thread _thread;
+            
             public string Name { get; set; } = null;
             public ManualResetEvent FinishedEvent { get; } = new ManualResetEvent(false);
             public Exception Exception { get; private set; }
             public Action SignalError { get; set; }
-            private Action<T1> ContinueWith { get; set; }
-            private Action<T1, T2> ContinueWith2 { get; set; }
             public Func<bool> Finished { get; set; }
             public bool FinishedFlag
             {
@@ -32,18 +32,9 @@ namespace GZipTest.Tasks
                 }
             }
 
+            public Func<bool> PreviousTaskIsCompleted { get; set; } = () => { return true; };
 
-
-            public Func<bool> PreviousFinished { get; set; } = () => { return true; };
-            
             private Task()
-            {
-                Finished = () => { return FinishedFlag; };
-            }
-
-            Thread _thread;
-
-            private Task(Action<T1, T2> action, T1 param1, T2 param2, Thread thread)
             {
                 Finished = () => { return FinishedFlag; };
             }
@@ -53,21 +44,10 @@ namespace GZipTest.Tasks
                 _action = action;
                 _param1 = param1;
                 _param2 = param2;
-                
-                _thread = new Thread(this.DoWork);
-                _thread.IsBackground = true;
-            }
-
-            public Task(Action<T1, T2> action, T1 param1, T2 param2,
-                Action<T1> continueWith = null) : this(action, param1, param2)
-            {
-                ContinueWith = continueWith;
-            }
-
-            public Task(Action<T1, T2> action, T1 param1, T2 param2,
-                Action<T1, T2> continueWith = null) : this(action, param1, param2)
-            {
-                ContinueWith2 = continueWith;
+                _thread = new Thread(this.DoWork)
+                {
+                    IsBackground = true
+                };
             }
 
             public void Start()
@@ -89,17 +69,15 @@ namespace GZipTest.Tasks
                     do
                     {
                         _action(_param1, _param2);
-                    } while (!PreviousFinished() && DoSuspend());
 
-                   // _action(_param1, _param2);
+                    } while (!PreviousTaskIsCompleted());
 
-                    //invoke additional action if specified
-                    ContinueWith?.Invoke(_param1);
-                    ContinueWith2?.Invoke(_param1, _param2);
+                    _action(_param1, _param2);
                 }
+
                 catch (Exception exception)
                 {
-                    exception.Source = $"{Name}: {exception.Source}. Thread: {Thread.CurrentThread.ManagedThreadId}";
+                    exception.Source = $"{Name}: {exception.Source}. Thread: {Thread.CurrentThread.Name}";
                     this.Exception = exception;
                 }
                 finally
@@ -111,16 +89,12 @@ namespace GZipTest.Tasks
                         try { SignalError(); }
                         catch { } //ignore possible error in callback;
 
-                    //setup completed for awaiting procedure
+                    //set completed flag
                     FinishedEvent.Set();
                 }
             }
 
-            private bool DoSuspend()
-            {
-                Thread.Sleep(100);
-                return true;
-            }
+           
         }
 
         

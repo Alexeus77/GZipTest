@@ -1,15 +1,52 @@
 ﻿using System;
 using System.IO;
-using static GZipTest.Compression.Process;
 using System.Diagnostics;
+using GZipTest.Compression;
 
 namespace GZipTest
 {
-    
     public class Runner 
     {
         const string archiveExt = ".gz2";
-        
+        private readonly ICompressor compressor;
+        private readonly ILogger logger;
+
+        public Runner(ICompressor compressor, ILogger logger)
+        {
+            this.compressor = compressor;
+            this.logger = logger;
+        }
+
+        public int Run(string[] args)
+        {
+            try
+            {
+                Start(args);
+                return 0;
+            }
+            catch (Exceptions.CatchedException ae)
+            {
+                logger.Log(ae.InnerException.Message);
+            }
+            catch (Tasks.TaskerAggregateException taskException)
+            {
+                foreach (var e in taskException.InnerExceptions)
+                {
+                    logger.Log($"Error {e.Message} {e.Source} \n {e.StackTrace}");
+                }
+            }
+            catch (Exception e)
+            {
+
+                var msg = $"Unexpected error occured during processing the command. Error {e.Message} {e.Source}.";
+                logger.Log(msg);
+
+                System.Diagnostics.Debug.WriteLine($"{msg} {e.StackTrace}");
+            }
+
+            return 1;
+        }
+
         public void Start(string[] args)
         {
             try
@@ -17,24 +54,18 @@ namespace GZipTest
 
                 var arguments = new ArgumentsParser(args);
 
-                if (arguments.Mode == ArgumentsParser.enMode.Undefined)
+                if (arguments.Mode == ArgumentsParser.RunMode.Undefined)
                 {
                     throw new ArgumentException("Specify either compress or decompress as a parameter.");
                 }
 
                 if (arguments.SourceFile == null)
                 {
-                    throw new ArgumentException("Specify source file parameter.");
+                    throw new ArgumentException("Specify a source file parameter.");
                 }
 
 
-                //if (arguments.TargetFile == null)
-                //{
-                //    throw new ArgumentException("Specify target file parameter.");
-                //}
-
-
-                Process(arguments.SourceFile, arguments.TargetFile, arguments.Mode);
+                Process(compressor, arguments.SourceFile, arguments.TargetFile, arguments.Mode);
             }
             catch (Exception e) when (e is ArgumentException || e is InvalidDataException ||
                 e is FileNotFoundException || e is IOException)
@@ -43,7 +74,7 @@ namespace GZipTest
             }
         }
 
-        public void Process(string sourceFile, string targetFile, ArgumentsParser.enMode mode)
+        public void Process(ICompressor compressor, string sourceFile, string targetFile, ArgumentsParser.RunMode mode)
         {
             if (string.IsNullOrEmpty(targetFile))
                 targetFile = GetTargetFileNameFromSource(sourceFile, mode);
@@ -52,13 +83,14 @@ namespace GZipTest
                 throw new ArgumentException("Specify target file parameter.");
             
 
-            CompressDecompress(sourceFile, targetFile, mode == ArgumentsParser.enMode.Compress ?
-                new Action<Stream, Stream>(Compress) : new Action<Stream, Stream>(Decompress));
+            CompressDecompress(sourceFile, targetFile, mode == ArgumentsParser.RunMode.Compress ?
+                new Action<Stream, Stream>(compressor.Compress) : 
+                new Action<Stream, Stream>(compressor.Decompress));
         }
 
-        private string GetTargetFileNameFromSource(string sourceFile, ArgumentsParser.enMode mode)
+        private string GetTargetFileNameFromSource(string sourceFile, ArgumentsParser.RunMode mode)
         {
-            return mode == ArgumentsParser.enMode.Compress ?
+            return mode == ArgumentsParser.RunMode.Compress ?
                     $"{sourceFile}{archiveExt}" :
                     sourceFile.EndsWith(archiveExt, StringComparison.OrdinalIgnoreCase) ?
                     sourceFile.Substring(0, sourceFile.LastIndexOf(archiveExt, StringComparison.OrdinalIgnoreCase)) :
@@ -73,14 +105,14 @@ namespace GZipTest
 
             if (File.Exists(destFile))
             {
-                Console.WriteLine($"Destination file '{destFile}' already exist. Overwrite? (y/n)");
+                logger.Log($"Destination file '{destFile}' already exist. Overwrite? (y/n)");
                 if (Console.Read() == 'y')
                     File.Delete(destFile);
                 else
                     return;
             }
 
-            Console.WriteLine($"Started processing.\nSource file '{sourceFile}'.\nDestination file '{destFile}'");
+            logger.Log($"Started processing.\nSource file '{sourceFile}'.\nDestination file '{destFile}'");
 
             Stopwatch sw = new Stopwatch();
 
@@ -92,10 +124,9 @@ namespace GZipTest
                 {
                     compressDecompressAction(readStream, writeStream);
                 }
-
             }
 
-            Console.WriteLine($"Completed in {(decimal)sw.ElapsedMilliseconds / 1000} second(s).");
+            logger.Log($"Completed in {(decimal)sw.ElapsedMilliseconds / 1000} second(s).");
         }
     }
 }

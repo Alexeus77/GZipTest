@@ -9,7 +9,7 @@ namespace GZipTest
         public static string compress = "compress";
         public static string decompress = "decompress";
 
-        public enum enMode
+        public enum RunMode
         {
             Undefined,
             Compress,
@@ -22,8 +22,8 @@ namespace GZipTest
             List<string> arguments = new List<string>(args);
 
             
-            Mode = arguments.Contains(ArgumentsParser.compress) ? enMode.Compress :
-                arguments.Contains(ArgumentsParser.decompress) ? enMode.Decompress : enMode.Undefined;
+            Mode = arguments.Contains(ArgumentsParser.compress) ? RunMode.Compress :
+                arguments.Contains(ArgumentsParser.decompress) ? RunMode.Decompress : RunMode.Undefined;
 
             var files = arguments.Exclude(ArgumentsParser.compress).Exclude(ArgumentsParser.decompress);
                
@@ -33,7 +33,7 @@ namespace GZipTest
 
         public string SourceFile { get; private set; }
         public string TargetFile { get; private set; }
-        public enMode Mode { get; private set; }
+        public RunMode Mode { get; private set; }
         
     }
 
