@@ -39,10 +39,15 @@ namespace GZipTest
             if (i % 200 == 0)
             {
                 ConsoleWriteLine($"GC allocated: {GC.GetTotalMemory(false) / (1024*1024)} Mb");
-                ConsoleWriteLine($"CPU now: {cpuCounter.NextValue()} %");
-                ConsoleWriteLine($"RAM now: {ramCounter.NextValue()} Mb");
-                
+                WriteCounters();
             }
+        }
+
+        [Conditional("DEBUGOUTPUT1")]
+        private static void WriteCounters()
+        {
+            ConsoleWriteLine($"CPU now: {cpuCounter.NextValue()} %");
+            ConsoleWriteLine($"RAM now: {ramCounter.NextValue()} Mb");
         }
 
         [Conditional("DEBUGOUTPUT")]
