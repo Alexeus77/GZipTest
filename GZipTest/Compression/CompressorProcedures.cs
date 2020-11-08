@@ -25,12 +25,10 @@ namespace GZipTest.Compression
 #endif
                 buffer.WriteLong(fromStream.Position);
 
-                numRead = buffer.ReadFrom(fromStream, count);
+                numRead = buffer.ReadFromSetLen(fromStream, count);
 
                 if (numRead > 0)
                 {
-                    if(numRead != count)
-                        buffer.SetLength(numRead + sizeof(long));
                     toBuffer.EnqueueBuffer(buffer);
                 }
 #if DEBUGOUTPUT
@@ -51,9 +49,9 @@ namespace GZipTest.Compression
                 toBuffers.EnqueueBuffer(compressed);
                 fromBuffer.ReleaseBuffer(buffer);
 
-                buffer.Position = 0;
-                var position = buffer.ReadLong();
-                ThreadMessage($"{position} : {buffer.Length}");
+                //buffer.Position = 0;
+                //var position = buffer.ReadLong();
+                ThreadMessage($"{buffer.Length} : {compressed.Length}");
             }
 
         }
@@ -101,12 +99,10 @@ namespace GZipTest.Compression
                 if (chunckSize > 0)
                 {
 
-                    numRead = memBytes.ReadFrom(fromStream, chunckSize);
+                    numRead = memBytes.ReadFromSetLen(fromStream, chunckSize);
 
                     if (numRead > 0)
                     {
-                        if(memBytes.Length != chunckSize)
-                            memBytes.SetLength(chunckSize);
                         toBuffer.EnqueueBuffer(memBytes);
                     }
 

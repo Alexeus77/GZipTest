@@ -57,7 +57,7 @@ namespace GZipTest.Tests
                 if (chunckSize > 0)
                 {
 
-                    numRead = memBytes.ReadFrom(fromStream, chunckSize);
+                    numRead = memBytes.ReadFromSetLen(fromStream, chunckSize);
 
                     if (numRead > 0)
                     {
