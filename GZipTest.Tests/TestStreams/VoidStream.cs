@@ -9,6 +9,7 @@ namespace GZipTest.Tests.TestStreams
     class VoidStream : Stream
     {
         private long length;
+        private long position;
 
         public override bool CanRead => throw new NotImplementedException();
 
@@ -16,9 +17,9 @@ namespace GZipTest.Tests.TestStreams
 
         public override bool CanWrite => throw new NotImplementedException();
 
-        public override long Length { get; }
+        public override long Length { get => length; }
 
-        public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public override long Position { get => position; set => position = value; }
 
         public override void Flush()
         {
@@ -37,12 +38,13 @@ namespace GZipTest.Tests.TestStreams
 
         public override void SetLength(long value)
         {
-            throw new NotImplementedException();
+            length = value;
         }
 
         public override void Write(byte[] buffer, int offset, int count)
         {
             length += count;
+            position += count;
         }
     }
 }

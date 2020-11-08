@@ -57,7 +57,7 @@
     <Compile Include="Helpers\CompressTestHelper.cs" />
     <Compile Include="Tasks\LinearTasker.cs" />
     <Compile Include="TestStreams\EndlessStream.cs" />
-    <Compile Include="ExecutionTests.cs" />
+    <Compile Include="RunnerTests.cs" />
     <Compile Include="StreamExtTests.cs" />
     <Compile Include="TaskerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
