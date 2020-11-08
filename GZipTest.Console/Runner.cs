@@ -2,7 +2,6 @@
 using System.IO;
 using System.Diagnostics;
 using GZipTest.Compression;
-using System.Runtime.ConstrainedExecution;
 
 namespace GZipTest
 {
@@ -62,7 +61,7 @@ namespace GZipTest
 
                 if (arguments.SourceFile == null)
                 {
-                    throw new ArgumentException("Specify source file parameter.");
+                    throw new ArgumentException("Specify a source file parameter.");
                 }
 
 
